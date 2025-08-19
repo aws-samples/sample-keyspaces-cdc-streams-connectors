@@ -1,0 +1,6 @@
+aws_region = "<your-region>"
+container_image = "<account-id>.dkr.ecr.<region>.amazonaws.com/keyspaces-streamer:latest"
+stream_arns = [
+  "arn:aws:cassandra:<region>:<account-id>:/keyspace/<keyspace>/table/<table>/stream/<timestamp>",
+  "arn:aws:cassandra:<region>:<account-id>:/keyspace/<keyspace>/table/<table2>/stream/<timestamp>"
+]
