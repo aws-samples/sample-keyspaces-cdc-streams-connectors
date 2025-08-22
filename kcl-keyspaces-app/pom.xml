@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>software.amazon.ssa</groupId>
+        <artifactId>kcl-keyspaces-parent</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>kcl-keyspaces-app</artifactId>
+    <packaging>jar</packaging>
+
+    <name>KCL Keyspaces app</name>
+    <description>Example applications using KCL Keyspaces connector</description>
+
+    <dependencies>
+        <!-- Core module dependency -->
+        <dependency>
+            <groupId>software.amazon.ssa</groupId>
+            <artifactId>kcl-keyspaces-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Logging -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>${logback.version}</version>
+        </dependency>
+
+        <!-- Testing -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.9.3</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>5.3.1</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.4.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>software.amazon.ssa.streams.connector.KCLMainRunner</mainClass>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>software.amazon.ssa.streams.connector.KCLMainRunner</mainClass>
+                    <execArgs>
+                        <execArg>--add-opens</execArg>
+                        <execArg>java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED</execArg>
+                        <execArg>--add-opens</execArg>
+                        <execArg>java.base/sun.nio.ch=org.apache.arrow.memory.core,ALL-UNNAMED</execArg>
+                    </execArgs>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

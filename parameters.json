@@ -1,0 +1,90 @@
+[
+  {
+    "ParameterKey": "VPCId",
+    "ParameterValue": "vpc-4cf28936"
+  },
+  {
+    "ParameterKey": "PrivateSubnetIds",
+    "ParameterValue": "subnet-f53005db,subnet-b08c72fd,subnet-9e557ec2,subnet-a254269c,subnet-f78565f9"
+  },
+  {
+    "ParameterKey": "SecurityGroupIds",
+    "ParameterValue": "sg-7fd3d720"
+  },
+  {
+    "ParameterKey": "RouteTableId",
+    "ParameterValue": "rtb-66488e18"
+  },
+  {
+    "ParameterKey": "KeyspaceName",
+    "ParameterValue": "tlp_stress"
+  },
+  {
+    "ParameterKey": "TableName",
+    "ParameterValue": "keyvalue"
+  },
+  {
+    "ParameterKey": "KeyspacesRegion",
+    "ParameterValue": "us-east-1"
+  },
+  {
+    "ParameterKey": "ApplicationName",
+    "ParameterValue": "keyspaces-stream-example"
+  },
+  {
+    "ParameterKey": "S3BucketId",
+    "ParameterValue": "opensearch-changes"
+  },
+  {
+    "ParameterKey": "S3Prefix",
+    "ParameterValue": "/export/tlp_stress/keyvalue/incremental/"
+  },
+  {
+    "ParameterKey": "ServiceReplicaCount",
+    "ParameterValue": "2"
+  },
+  {
+    "ParameterKey": "ECRImage",
+    "ParameterValue": "963740746376.dkr.ecr.us-east-1.amazonaws.com/amazon-keyspaces-streams:latest"
+  },
+  {
+    "ParameterKey": "Cpu",
+    "ParameterValue": "1024"
+  },
+  {
+    "ParameterKey": "Memory",
+    "ParameterValue": "2048"
+  },
+  {
+    "ParameterKey": "CreateKeyspacesEndpoint",
+    "ParameterValue": "false"
+  },
+  {
+    "ParameterKey": "CreateKeyspacesStreamsEndpoint",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "CreateECREndpoints",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "CreateSTSEndpoint",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "CreateCloudWatchEndpoints",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "CreateKinesisEndpoint",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "CreateDynamoDBEndpoint",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "CreateS3Endpoint",
+    "ParameterValue": "true"
+  }
+]

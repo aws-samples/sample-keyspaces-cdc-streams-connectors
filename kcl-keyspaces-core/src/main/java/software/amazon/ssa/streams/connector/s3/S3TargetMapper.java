@@ -1,0 +1,146 @@
+package software.amazon.ssa.streams.connector.s3;
+
+import java.util.Deque;
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.typesafe.config.Config;
+
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.ArrayDeque;
+
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.keyspaces.streamsadapter.adapter.KeyspacesStreamsClientRecord;
+import software.amazon.ssa.streams.config.KeyspacesConfig;
+import software.amazon.ssa.streams.connector.ITargetMapper;
+import software.amazon.ssa.streams.helpers.AvroHelper;
+import software.amazon.ssa.streams.helpers.JSONHelper;
+
+public class S3TargetMapper implements ITargetMapper {
+
+    private static final Logger logger = LoggerFactory.getLogger(S3TargetMapper.class);
+    
+    private S3Client s3Client;
+    private String bucketName;
+    private String prefix;
+    private String regionName;
+    private String format;
+    private String timestampPartition;
+    private int maxRetries;
+   // Schema definition for Keyspaces CDC records with valueCells structure
+   
+    public S3TargetMapper(Config config) {
+
+        this.bucketName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.bucket-id", null);
+        this.prefix = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.prefix", "");
+        this.regionName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.region", "us-east-1");
+        this.format = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.format", "avro");
+        this.timestampPartition = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.timestamp-partition", "hours");
+        this.maxRetries = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.max-retries", 3);
+        this.s3Client = S3Client.builder().region(Region.of(regionName)).build();
+    }
+
+    @Override
+    public void initialize(KeyspacesConfig keyspacesConfig) {
+        logger.info("Initializing S3TargetMapper with bucket: {} and prefix: {}", bucketName, prefix);
+    }
+
+    @Override
+    public void handleRecords(List<KeyspacesStreamsClientRecord> records) throws Exception {
+        if (records == null || records.isEmpty()) {
+            logger.debug("No records to process");
+            return;
+        }
+
+        
+
+        StringBuilder time = new StringBuilder();
+        
+        Deque<String> dq = new ArrayDeque<String>();
+              
+        switch(timestampPartition) {
+
+            case "seconds":
+                dq.addFirst(String.format("%02d/", LocalDateTime.now().getSecond()));
+            case "minutes":
+                dq.addFirst(String.format("%02d/", LocalDateTime.now().getMinute()));
+            case "hours":
+                dq.addFirst(String.format("%02d/", LocalDateTime.now().getHour()));
+            case "days":
+                dq.addFirst(String.format("%02d/", LocalDateTime.now().getDayOfMonth()));
+            case "months":
+                dq.addFirst(String.format("%02d/", LocalDateTime.now().getMonthValue()));
+            case "years":
+                time.append(String.format("%04d/", LocalDateTime.now().getYear()));
+                break;
+            default:
+                logger.error("No timestamp partition selected: " + timestampPartition);
+            }
+
+            StringBuilder partitionBuilder = new StringBuilder();
+
+            dq.forEach(partitionBuilder::append);
+
+            String partition = partitionBuilder.toString();
+
+            String firstSequenceNumber = records.get(0).sequenceNumber();
+            String lastSequenceNumber = records.get(records.size() - 1).sequenceNumber();
+            Instant timestamp = Instant.now();
+
+            // Create filename with sequence range and timestamp
+            String filename = String.format("%s-%s-%d.json", 
+                firstSequenceNumber,
+                lastSequenceNumber,
+                timestamp.toEpochMilli());
+            
+            String key = "";
+
+            if (partition.length() > 0) {
+                key = String.format("%s/%s/%s", prefix, partition, filename).replace("//", "/");
+                
+            }else{
+                key = String.format("%s/%s", prefix, filename).replace("//", "/")  ;
+            }
+
+            logger.info("Processing {} records for S3 Parquet upload", records.size());
+            
+            byte[] data;
+            if(format.equalsIgnoreCase("avro")) {
+                data = AvroHelper.writeRecordsToAvro(records);
+              } else if(format.equals("json")) {
+                data = JSONHelper.writeRecordsToJSON(records);
+             } else {
+                throw new IllegalArgumentException("Invalid format: " + format);
+            }
+
+            boolean success = false;
+            for (int attempt = 0; attempt < maxRetries && !success; attempt++) {
+                try {
+                    s3Client.putObject(
+                        PutObjectRequest.builder()
+                            .bucket(bucketName)
+                            .key(key)
+                            .build(),
+                        RequestBody.fromBytes(data)
+                    );
+                    success = true;
+                    logger.info("Successfully wrote {} records to S3: {}", records.size(), key);
+                } catch (Exception s3Error) {
+                    logger.warn("S3 write attempt {} failed: {}", attempt, s3Error.getMessage());
+                    if (attempt < maxRetries-1) {
+                        Thread.sleep(10 * attempt); // Exponential backoff
+                    } else {
+                        throw s3Error;
+                    }
+                }
+            }
+
+
+     }
+}

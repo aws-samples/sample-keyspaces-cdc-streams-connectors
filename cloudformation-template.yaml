@@ -1,0 +1,535 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for KCL Keyspaces Runner with ECS Cluster and VPC Endpoints'
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Network Configuration"
+        Parameters:
+          - VPCId
+          - PrivateSubnetIds
+          - SecurityGroupIds
+          - RouteTableId
+      
+      - Label:
+          default: "Keyspaces Configuration"
+        Parameters:
+          - KeyspaceName
+          - TableName
+          - KeyspacesRegion
+          - ApplicationName
+      
+      - Label:
+          default: "S3 Configuration"
+        Parameters:
+          - S3BucketId
+          - S3Prefix
+      
+      - Label:
+          default: "ECS Configuration"
+        Parameters:
+          - ServiceReplicaCount
+          - ECRImage
+          - Cpu
+          - Memory
+      
+      - Label:
+          default: "VPC Endpoints Configuration"
+        Parameters:
+          - CreateKeyspacesEndpoint
+          - CreateKeyspacesStreamsEndpoint
+          - CreateECREndpoints
+          - CreateSTSEndpoint
+          - CreateCloudWatchEndpoints
+          - CreateKinesisEndpoint
+          - CreateDynamoDBEndpoint
+          - CreateS3Endpoint
+
+Parameters:
+  VPCId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID where the KCL Keyspaces Runner will be deployed
+
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: List of private subnet IDs for the ECS tasks
+
+  SecurityGroupIds:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    Description: List of security group IDs for the ECS tasks
+
+  RouteTableId:
+    Type: String
+    Description: ID of the existing Route Table associated with private subnets
+    
+  KeyspaceName:
+    Type: String
+    Description: Amazon Keyspaces keyspace name
+    Default: tlp_stress
+
+  TableName:
+    Type: String
+    Description: Amazon Keyspaces table name
+    Default: keyvalue
+
+  KeyspacesRegion:
+    Type: String
+    Description: AWS region for Keyspaces
+    Default: us-east-1
+
+  ApplicationName:
+    Type: String
+    Description: Application name for KCL
+    Default: keyspaces-stream-example
+
+  S3BucketId:
+    Type: String
+    Description: S3 bucket ID for storing processed data
+    Default: opensearch-changes
+
+  S3Prefix:
+    Type: String
+    Description: S3 prefix for storing processed data
+    Default: /export/tlp_stress/keyvalue/incremental/
+
+  ServiceReplicaCount:
+    Type: Number
+    Description: Number of KCL Keyspaces Runner service replicas to run
+    Default: 1
+    MinValue: 1
+    MaxValue: 10
+    ConstraintDescription: Must be a number between 1 and 10
+
+  ECRImage:
+    Type: String
+    Description: ECR image for KCL Keyspaces Runner
+    Default: ACCOUNT.dkr.ecr.AWS_REGION.amazonaws.com/kcl-keyspaces-runner:latest
+
+  Cpu:
+    Type: String
+    Description: CPU units for the ECS task (1024 = 1 vCPU)
+    Default: '1024'
+    AllowedValues:
+      - '256'
+      - '512'
+      - '1024'
+      - '2048'
+      - '4096'
+
+  Memory:
+    Type: String
+    Description: Memory for the ECS task (in MiB)
+    Default: '2048'
+    AllowedValues:
+      - '512'
+      - '1024'
+      - '2048'
+      - '4096'
+      - '8192'
+
+  # VPC Endpoint Configuration Parameters
+  CreateKeyspacesEndpoint:
+    Type: String
+    Description: Create VPC endpoint for Amazon Keyspaces (Cassandra)
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+
+  CreateKeyspacesStreamsEndpoint:
+    Type: String
+    Description: Create VPC endpoint for Amazon Keyspaces Streams
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+
+  CreateECREndpoints:
+    Type: String
+    Description: Create VPC endpoints for Amazon ECR (API and Docker)
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+
+  CreateSTSEndpoint:
+    Type: String
+    Description: Create VPC endpoint for Amazon STS
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+
+  CreateCloudWatchEndpoints:
+    Type: String
+    Description: Create VPC endpoints for Amazon CloudWatch (Logs and Monitoring)
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+
+  CreateKinesisEndpoint:
+    Type: String
+    Description: Create VPC endpoint for Amazon Kinesis
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+
+  CreateDynamoDBEndpoint:
+    Type: String
+    Description: Create VPC endpoint for Amazon DynamoDB
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+
+  CreateS3Endpoint:
+    Type: String
+    Description: Create VPC gateway endpoint for Amazon S3
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+
+Conditions:
+  CreateKeyspacesEndpoint: !Equals [!Ref CreateKeyspacesEndpoint, 'true']
+  CreateKeyspacesStreamsEndpoint: !Equals [!Ref CreateKeyspacesStreamsEndpoint, 'true']
+  CreateECREndpoints: !Equals [!Ref CreateECREndpoints, 'true']
+  CreateSTSEndpoint: !Equals [!Ref CreateSTSEndpoint, 'true']
+  CreateCloudWatchEndpoints: !Equals [!Ref CreateCloudWatchEndpoints, 'true']
+  CreateKinesisEndpoint: !Equals [!Ref CreateKinesisEndpoint, 'true']
+  CreateDynamoDBEndpoint: !Equals [!Ref CreateDynamoDBEndpoint, 'true']
+  CreateS3Endpoint: !Equals [!Ref CreateS3Endpoint, 'true']
+
+Resources:
+  # VPC Endpoints for private connectivity
+  KeyspacesVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateKeyspacesEndpoint
+    Properties:
+      ServiceName: !Sub 'com.amazonaws.${KeyspacesRegion}.cassandra'
+      PrivateDnsEnabled: True
+      SecurityGroupIds: !Ref SecurityGroupIds
+      SubnetIds: !Ref PrivateSubnetIds
+      VpcEndpointType: Interface
+      VpcId: !Ref VPCId
+
+  KeyspacesStreamsVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateKeyspacesStreamsEndpoint
+    Properties:
+      ServiceName: !Sub 'api.aws.${AWS::Region}.cassandra-streams'
+      PrivateDnsEnabled: True
+      SecurityGroupIds: !Ref SecurityGroupIds
+      SubnetIds: !Ref PrivateSubnetIds
+      VpcEndpointType: Interface
+      VpcId: !Ref VPCId
+
+  EcrApiEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateECREndpoints
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ecr.api
+      VpcId: !Ref VPCId
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      PrivateDnsEnabled: True
+      SecurityGroupIds: !Ref SecurityGroupIds
+
+  EcrDkrEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateECREndpoints
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ecr.dkr
+      VpcId: !Ref VPCId
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      PrivateDnsEnabled: True
+      SecurityGroupIds: !Ref SecurityGroupIds
+
+  StsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateSTSEndpoint
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.sts
+      VpcId: !Ref VPCId
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      PrivateDnsEnabled: True
+      SecurityGroupIds: !Ref SecurityGroupIds
+
+  CloudWatchLogsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateCloudWatchEndpoints
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.logs
+      VpcId: !Ref VPCId
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      PrivateDnsEnabled: True
+      SecurityGroupIds: !Ref SecurityGroupIds
+
+  CloudWatchEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateCloudWatchEndpoints
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.monitoring
+      VpcId: !Ref VPCId
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      PrivateDnsEnabled: True
+      SecurityGroupIds: !Ref SecurityGroupIds
+
+  KinesisEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateKinesisEndpoint
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.kinesis-streams
+      VpcId: !Ref VPCId
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      PrivateDnsEnabled: False
+      SecurityGroupIds: !Ref SecurityGroupIds
+
+  DynamoDBEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateDynamoDBEndpoint
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.dynamodb
+      VpcId: !Ref VPCId
+      VpcEndpointType: Gateway
+      # Service name pattern works in all standard regions
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.dynamodb
+      RouteTableIds:
+        - !Ref RouteTableId
+  
+  # Create Gateway VPC endpoint for S3
+  S3GatewayEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateS3Endpoint
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.s3
+      VpcId: !Ref VPCId
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref RouteTableId
+
+  # ECS Resources
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub ${AWS::StackName}-kcl-keyspaces-cluster
+      CapacityProviders:
+        - FARGATE
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: FARGATE
+          Weight: 1
+
+  KCLKeyspacesLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/${AWS::StackName}-kcl-keyspaces-runner
+      RetentionInDays: 30
+
+  # IAM Role for ECS Task Execution
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+        - 'arn:aws:iam::aws:policy/AmazonECS_FullAccess'
+
+  # IAM Role for ECS Task (application permissions)
+  ECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: KCLKeyspacesPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - kinesis:DescribeStream
+                  - kinesis:DescribeStreamSummary
+                  - kinesis:GetRecords
+                  - kinesis:GetShardIterator
+                  - kinesis:ListShards
+                  - kinesis:ListStreams
+                  - kinesis:SubscribeToShard
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - dynamodb:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - cassandra:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:aws:s3:::${S3BucketId}
+                  - !Sub arn:aws:s3:::${S3BucketId}/*
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                  - cloudwatch:GetMetricData
+                  - cloudwatch:GetMetricStatistics
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - sts:GetCallerIdentity
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - ecr:DescribeRepositories
+                  - ecr:ListImages
+                  - ecr:DescribeImages
+                Resource: '*'
+
+  # ECS Task Definition
+  KCLKeyspacesTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub ${AWS::StackName}-kcl-keyspaces-runner
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt ECSTaskRole.Arn
+      Cpu: !Ref Cpu
+      Memory: !Ref Memory
+      ContainerDefinitions:
+        - Name: kcl-keyspaces-runner
+          Image: !Ref ECRImage
+          Essential: true
+          PortMappings:
+            - ContainerPort: 8080
+              Protocol: tcp
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - curl -f http://localhost:8080/health || exit 1
+            Interval: 30
+            Timeout: 10
+            Retries: 3
+            StartPeriod: 60
+          Environment:
+            - Name: AWS_REGION
+              Value: !Ref KeyspacesRegion
+            - Name: JAVA_OPTS
+              Value: "-Xms512m -Xmx2g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+            - Name: KEYSPACE_NAME
+              Value: !Ref KeyspaceName
+            - Name: TABLE_NAME
+              Value: !Ref TableName
+            - Name: APPLICATION_NAME
+              Value: !Ref ApplicationName
+            - Name: S3_BUCKET_ID
+              Value: !Ref S3BucketId
+            - Name: S3_PREFIX
+              Value: !Ref S3Prefix
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref KCLKeyspacesLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+          Ulimits:
+            - Name: nofile
+              SoftLimit: 65536
+              HardLimit: 65536
+
+  # ECS Service
+  KCLKeyspacesService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref KCLKeyspacesTaskDefinition
+      DesiredCount: !Ref ServiceReplicaCount
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups: !Ref SecurityGroupIds
+          Subnets: !Ref PrivateSubnetIds
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+      EnableExecuteCommand: true
+
+Outputs:
+  VPCId:
+    Description: VPC ID
+    Value: !Ref VPCId
+    Export:
+      Name: !Sub "${AWS::StackName}-VPCID"
+
+  PrivateSubnets:
+    Description: Private Subnets
+    Value: !Join [",", !Ref PrivateSubnetIds]
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSubnets"
+
+  ECSClusterName:
+    Description: ECS Cluster Name
+    Value: !Ref ECSCluster
+    Export:
+      Name: !Sub "${AWS::StackName}-ECSClusterName"
+
+  KCLKeyspacesServiceName:
+    Description: KCL Keyspaces Service Name
+    Value: !GetAtt KCLKeyspacesService.Name
+    Export:
+      Name: !Sub "${AWS::StackName}-KCLKeyspacesServiceName"
+
+  ServiceReplicaCount:
+    Description: Number of KCL Keyspaces service replicas running
+    Value: !Ref ServiceReplicaCount
+    Export:
+      Name: !Sub "${AWS::StackName}-ServiceReplicaCount"
+
+  TaskDefinitionArn:
+    Description: ECS Task Definition ARN
+    Value: !Ref KCLKeyspacesTaskDefinition
+    Export:
+      Name: !Sub "${AWS::StackName}-TaskDefinitionArn"
+
+  LogGroupName:
+    Description: CloudWatch Log Group Name
+    Value: !Ref KCLKeyspacesLogGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-LogGroupName"

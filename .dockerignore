@@ -1,0 +1,56 @@
+# Git
+.git
+.gitignore
+
+# Maven
+target/
+*.jar
+*.war
+*.ear
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Documentation
+README.md
+*.md
+
+# Scripts (keep only what's needed for build)
+*.sh
+
+# Python files (if any)
+*.py
+__pycache__/
+venv/
+
+# Test files
+**/test/
+**/tests/
+
+# Build artifacts
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar

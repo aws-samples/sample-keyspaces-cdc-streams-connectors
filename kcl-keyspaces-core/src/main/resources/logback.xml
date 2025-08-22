@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Console appender -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- File appender -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/kcl-application.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/kcl-application.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Root logger -->
+    <root level="ERROR">
+        <appender-ref ref="STDOUT" />
+        <appender-ref ref="FILE" />
+    </root>
+
+    <!-- Application specific loggers -->
+    <logger name="com.example.kcl" level="INFO" />
+    <logger name="software.amazon.ssa.streams.connector" level="INFO" />
+    <logger name="software.amazon.ssa.streams.connector.keyspaces" level="INFO" />
+    
+    <!-- AWS SDK loggers -->
+    <logger name="software.amazon.awssdk" level="WARN" />
+    <logger name="software.amazon.kinesis" level="INFO" />
+    
+    <!-- Reduce noise from other libraries -->
+    <logger name="org.apache.http" level="WARN" />
+    <logger name="com.amazonaws" level="WARN" />
+</configuration> 
