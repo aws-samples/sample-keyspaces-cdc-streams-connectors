@@ -36,8 +36,12 @@
     "ParameterValue": "opensearch-changes"
   },
   {
-    "ParameterKey": "S3Prefix",
-    "ParameterValue": "/export/tlp_stress/keyvalue/incremental/"
+    "ParameterKey": "S3Region",
+    "ParameterValue": "us-east-1"
+  },
+  {
+    "ParameterKey": "S3Format",
+    "ParameterValue": "avro"
   },
   {
     "ParameterKey": "ServiceReplicaCount",

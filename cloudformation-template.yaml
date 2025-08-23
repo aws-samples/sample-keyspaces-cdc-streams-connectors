@@ -24,7 +24,8 @@ Metadata:
           default: "S3 Configuration"
         Parameters:
           - S3BucketId
-          - S3Prefix
+          - S3Region
+          - S3Format
       
       - Label:
           default: "ECS Configuration"
@@ -87,11 +88,6 @@ Parameters:
     Type: String
     Description: S3 bucket ID for storing processed data
     Default: opensearch-changes
-
-  S3Prefix:
-    Type: String
-    Description: S3 prefix for storing processed data
-    Default: /export/tlp_stress/keyvalue/incremental/
 
   ServiceReplicaCount:
     Type: Number
@@ -448,20 +444,22 @@ Resources:
             Retries: 3
             StartPeriod: 60
           Environment:
-            - Name: AWS_REGION
+            - Name: STREAM_REGION
               Value: !Ref KeyspacesRegion
-            - Name: JAVA_OPTS
-              Value: "-Xms512m -Xmx2g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
-            - Name: KEYSPACE_NAME
+            - Name: STREAM_KEYSPACE_NAME
               Value: !Ref KeyspaceName
-            - Name: TABLE_NAME
-              Value: !Ref TableName
-            - Name: APPLICATION_NAME
+            - Name: STREAM_TABLE_NAME
+              Value: !Ref KeyspaceName
+            - Name: STREAM_APPLICATION_NAME
               Value: !Ref ApplicationName
-            - Name: S3_BUCKET_ID
+            - Name: CONNECTOR_S3_BUCKET_ID
               Value: !Ref S3BucketId
-            - Name: S3_PREFIX
-              Value: !Ref S3Prefix
+            - Name: CONNECTOR_S3_PREFIX 
+              Value: !Join [ "/","export", "incremental", !Ref KeyspaceName, !Ref TableName ]
+            - Name: CONNECTOR_FORMAT
+              Value: !Ref S3Format
+            - Name: CONNECTOR_REGION
+              Value: !Ref S3Region
           LogConfiguration:
             LogDriver: awslogs
             Options:

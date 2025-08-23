@@ -1,14 +1,10 @@
-# Keyspaces CDC Streams to S3
+# Keyspaces CDC Streams connectors
 
-A Java application that streams Amazon Keyspaces Change Data Capture (CDC) events to Amazon S3 using the AWS Keyspaces Streams Kinesis Adapter.
+Move data from Amazon Keyspaces to different downstream targets using Keyspaces CDC Streams connectors. This library will allow you to deploy Kinesis client library (KCL)  based application to stream data from your Keyspaces. The goal is to simoplify connecting data source to different targets. 
 
-## Overview
+## Current Available Connectors
+- Connector to s3 with supported format json, avro. 
 
-This project demonstrates how to:
-- Consume CDC events from Amazon Keyspaces tables
-- Process the events using Kinesis Client Library (KCL)
-- Store processed events in Amazon S3 buckets
-- Deploy the solution using ECS Fargate and Terraform
 
 ## Architecture
 
@@ -20,35 +16,9 @@ Detailed flow of architecture can be referred at [Architecture Description](arch
 
 For step-by-step data flow visualization, see [Data Flow Diagram](architecture/DATA_FLOW.md)
 
-## Prerequisites
-
-- Java 8 or higher (Verified Java version: 17.0)
-- Maven 3.6+ (Verified Maven version: 3.9.10)
-- Docker
-- AWS CLI configured with appropriate permissions
-- Terraform (for infrastructure deployment)
-
 ## Quick Start
 
-### 1. Setup Dependencies
-
-The project requires the AWS Keyspaces Streams Kinesis Adapter to be built locally. Run the automated setup:
-
-```bash
-./infrastructure/scripts/setup-dependencies.sh
-```
-
-This script will:
-- Check prerequisites (Java 8+, Maven 3.6+, Git). Verified on Java version: 17.0 & Maven version: 3.9.10
-- Clone and build the Keyspaces Streams Kinesis Adapter from GitHub
-- Install it to your local Maven repository
-- Verify your project builds successfully
-
-**Note**: This is a one-time setup per development environment.
-
-### 2. Create Keyspaces Table with CDC
-
-From AWS Console, create keyspace and tables. Execute each command separately:
+## Create a keyspace and a table with streams enabled
 
 ```cql
 CREATE KEYSPACE media WITH replication = {'class': 'SingleRegionStrategy'};
@@ -71,25 +41,66 @@ AND CUSTOM_PROPERTIES = {
 };
 ```
 
-### 3. Get CDC Stream ARN
+### 2. Build project and move Container to Elastic container registry
 
-After creating the table, get the CDC stream ARN:
-
+The following script will build this project and move the container image to ECS. 
 ```bash
-aws keyspaces get-table --keyspace-name media --table-name media_content --query 'latestStreamArn' --output text
+./move-docker-to-ecr.sh
 ```
 
-Save this ARN as you'll need it for the application configuration.
+### 3. Configure project 
 
-### 4. Deploy Infrastructure
-
-Run the automated deployment script:
+Next you will need to configure the paramters file which will be passed into a cloudformation template to deploy the ECS task. 
 
 ```bash
-./infrastructure/scripts/deploy.sh
+vi parameters.json
+  ```
+## Available Parameters
+
+The following parameters can be configured in the `parameters.json` file:
+
+### Network Configuration
+- **VPCId**: The ID of the VPC where the ECS tasks will be deployed
+- **PrivateSubnetIds**: Comma-separated list of private subnet IDs for the ECS tasks
+- **SecurityGroupIds**: Comma-separated list of security group IDs for the ECS tasks
+- **RouteTableId**: The route table ID for network routing configuration
+
+### Keyspaces Configuration
+- **KeyspaceName**: The name of the Amazon Keyspaces keyspace containing the table with CDC enabled
+- **TableName**: The name of the table in the keyspace that has CDC streams enabled
+- **KeyspacesRegion**: The AWS region where the Keyspaces keyspace is located
+
+### Application Configuration
+- **ApplicationName**: The name of the KCL application that will process the CDC streams
+- **ServiceReplicaCount**: Number of ECS task replicas to run (default: 2)
+- **Cpu**: CPU units allocated to each ECS task (1024 = 1 vCPU)
+- **Memory**: Memory allocated to each ECS task in MB
+
+### S3 Configuration
+- **S3BucketId**: The name of the S3 bucket where CDC data will be stored
+- **S3Region**: The AWS region where the S3 bucket is located
+- **S3Format**: The format for storing data in S3 (supported: "json", "avro")
+
+### Container Configuration
+- **ECRImage**: The ECR image URI for the container that will process the streams
+
+### VPC Endpoint Configuration
+- **CreateKeyspacesEndpoint**: Whether to create a VPC endpoint for Amazon Keyspaces (true/false)
+- **CreateKeyspacesStreamsEndpoint**: Whether to create a VPC endpoint for Keyspaces CDC Streams (true/false)
+- **CreateECREndpoints**: Whether to create VPC endpoints for ECR (true/false)
+- **CreateSTSEndpoint**: Whether to create a VPC endpoint for AWS STS (true/false)
+- **CreateCloudWatchEndpoints**: Whether to create VPC endpoints for CloudWatch (true/false)
+- **CreateKinesisEndpoint**: Whether to create a VPC endpoint for Kinesis (true/false)
+- **CreateDynamoDBEndpoint**: Whether to create a VPC endpoint for DynamoDB (true/false)
+- **CreateS3Endpoint**: Whether to create a VPC endpoint for S3 (true/false)
+
+### 4. Execute the CloudFormation template with the parameters file
+
+execute the following script to deploy the cloudfromation template.
+```
+./ create-stack-with-json.sh
 ```
 
-Or follow the manual deployment steps in [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ### 5. Test with Sample Data
 
@@ -103,47 +114,8 @@ INSERT INTO media.media_content (content_id, title, creator_id, media_type, uplo
 
 ### 6. Verify S3 Output
 
-Records are stored in S3 with the pattern: `KEYSPACE/TABLE_NAME/YYYY-MM-DD/SEQUENCE_NUMBER.json`
+Records are stored in S3 in the bucket provided
 
-## Key Features
-
-- **Multi-stream Support**: Process multiple Keyspaces streams simultaneously
-- **Fault Tolerance**: DynamoDB checkpoints ensure no data loss
-- **Auto-scaling**: ECS Fargate handles scaling automatically
-- **Monitoring**: CloudWatch integration for logs and metrics
-- **Security**: IAM roles with least-privilege access
-
-## Troubleshooting
-
-### Dependency Issues
-
-If you encounter build errors related to the Keyspaces Streams Kinesis Adapter:
-
-1. **Run the setup script**: `./infrastructure/scripts/setup-dependencies.sh`
-2. **Check your local Maven repository**: The adapter should be installed at `~/.m2/repository/software/amazon/keyspaces/keyspaces-streams-kinesis-adapter/1.0.0/`
-3. **Clean and rebuild**: `mvn clean package`
-
-### Common Issues
-
-- **"Could not find artifact software.amazon.keyspaces:keyspaces-streams-kinesis-adapter"**: Run `./infrastructure/scripts/setup-dependencies.sh` to build and install the adapter locally
-- **Build failures**: Ensure you have Java 8+ and Maven 3.6+ installed
-- **Git clone failures**: Check your internet connection and GitHub access
-
-## Cleanup
-
-To remove all AWS resources created by this project:
-
-```bash
-./infrastructure/scripts/cleanup.sh
-```
-
-This automated script will:
-- Empty and delete S3 buckets
-- Delete DynamoDB tables (including KCL checkpoints)
-- Run `terraform destroy`
-- Delete ECR repositories
-- Remove IAM roles and policies
-- Delete CloudWatch log groups
 
 
 ## References
