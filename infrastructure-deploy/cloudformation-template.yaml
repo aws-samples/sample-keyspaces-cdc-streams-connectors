@@ -189,6 +189,19 @@ Parameters:
       - 'true'
       - 'false'
 
+  S3Format:
+    Type: String
+    Description: S3 format for storing processed data
+    Default: 'avro'
+    AllowedValues:
+      - 'avro'
+      - 'json'
+
+  S3Region:
+    Type: String
+    Description: AWS region for S3
+    Default: 'us-east-1'
+
 Conditions:
   CreateKeyspacesEndpoint: !Equals [!Ref CreateKeyspacesEndpoint, 'true']
   CreateKeyspacesStreamsEndpoint: !Equals [!Ref CreateKeyspacesStreamsEndpoint, 'true']
@@ -455,7 +468,7 @@ Resources:
             - Name: CONNECTOR_S3_BUCKET_ID
               Value: !Ref S3BucketId
             - Name: CONNECTOR_S3_PREFIX 
-              Value: !Join [ "/","export", "incremental", !Ref KeyspaceName, !Ref TableName ]
+              Value: !Join [ "/", [ "export", "incremental", !Ref KeyspaceName, !Ref TableName ]]
             - Name: CONNECTOR_FORMAT
               Value: !Ref S3Format
             - Name: CONNECTOR_REGION

@@ -11,9 +11,9 @@ RUN apk add --no-cache \
 WORKDIR /app
 
 # Copy pom files first for better layer caching
-COPY pom.xml ./
-COPY kcl-keyspaces-core/pom.xml ./kcl-keyspaces-core/
-COPY kcl-keyspaces-app/pom.xml ./kcl-keyspaces-app/
+COPY  pom.xml ./
+COPY  kcl-keyspaces-core/pom.xml ./kcl-keyspaces-core/
+COPY  kcl-keyspaces-app/pom.xml ./kcl-keyspaces-app/
 
 # Download dependencies (this layer will be cached if pom files don't change)
 RUN mvn dependency:go-offline -B

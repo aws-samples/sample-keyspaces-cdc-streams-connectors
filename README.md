@@ -1,10 +1,9 @@
-# Keyspaces CDC Streams connectors
+# Keyspaces CDC Streams Connectors
 
-Move data from Amazon Keyspaces to different downstream targets using Keyspaces CDC Streams connectors. This library will allow you to deploy Kinesis client library (KCL)  based application to stream data from your Keyspaces. The goal is to simoplify connecting data source to different targets. 
+Move data from Amazon Keyspaces to different downstream targets using Keyspaces CDC Streams connectors. This library will allow you to deploy a Kinesis Client Library (KCL)-based application to stream data from your Keyspaces. The goal is to simplify connecting data sources to different targets. Different connectors can be added by extending the ITargetMapper interface. Configuration properties can be exposed in the application.conf or environment variables.  
 
-## Current Available Connectors
-- Connector to s3 with supported format json, avro. 
-
+## Currently Available Connectors
+- Connector to S3 with supported formats: JSON, Avro. 
 
 ## Architecture
 
@@ -12,13 +11,158 @@ This project implements a streaming architecture that processes Amazon Keyspaces
 
 ![Architecture Diagram](architecture/keyspaces-cdc-s3-architecture-numbered.png)
 
-Detailed flow of architecture can be referred at [Architecture Description](architecture/ARCHITECTURE.md)
+For detailed flow of the architecture, refer to [Architecture Description](architecture/ARCHITECTURE.md)
 
 For step-by-step data flow visualization, see [Data Flow Diagram](architecture/DATA_FLOW.md)
 
+## Depoyment
+Docker file and deployment information can be found in [infrastructure-deploy](infrastructure-deploy) directory
+
+## Configuration
+
+The application can be configured using either `application.conf` file or environment variables. Environment variables take precedence over configuration file values. 
+
+### application.conf
+
+The main configuration file is located at `kcl-keyspaces-app/src/main/resources/application.conf`. Here's the complete configuration structure:
+
+```hocon
+keyspaces-cdc-streams {
+    stream {
+        keyspace-name = "your-keyspace-name"
+        table-name = "your-table-name"
+        region = "us-east-1"
+        application-name = "your-application-name"
+        
+        # Optional: specific stream name
+        # stream-name = "your-stream-name"
+        # Optional: specific stream ARN
+        # stream-arn = "arn:aws:kinesis:us-east-1:123456789012:stream/your-stream"
+    }
+    
+    connector {
+        target-mapper = "software.amazon.ssa.streams.connector.s3.S3TargetMapper"
+        bucket-id = "your-s3-bucket-name"
+        prefix = "export/keyspace/table/incremental"
+        timestamp-partition = "hours"
+        region = "us-east-1"
+        format = "avro"  # or "json"
+        max-retries = 3
+    }
+    
+    coordinator {
+        skip-shard-sync-at-worker-initialization-if-leases-exist = true
+        parent-shard-poll-interval-millis = 1000
+        shard-consumer-dispatch-poll-interval-millis = 500
+    }
+    
+    lease-management {
+        shard-sync-interval-millis = 60000
+        leases-recovery-auditor-inconsistency-confidence-threshold = 3
+        leases-recovery-auditor-execution-frequency-millis = 5000
+        lease-assignment-interval-millis = 1000
+    }
+    
+    processor {
+        call-process-records-even-for-empty-record-list = true
+    }
+}
+```
+
+#### Configuration Sections
+
+##### Stream Configuration
+- **keyspace-name**: The name of your Amazon Keyspaces keyspace
+- **table-name**: The name of the table with CDC enabled
+- **region**: AWS region where your Keyspaces keyspace is located
+- **application-name**: Name for the KCL application
+- **stream-name**: (Optional) Specific stream name to use. Tables can have multiple streams. 
+- **stream-arn**: (Optional) Specific stream ARN to use. Takes precedence over table/stream name configuration. 
+
+##### Connector Configuration
+- **target-mapper**: Fully qualified class name of the target mapper implementation
+
+##### S3 Connector Configuration
+- **bucket-id**: S3 bucket name for storing CDC data
+- **prefix**: S3 key prefix for organizing data (e.g., "export/keyspace/table/incremental")
+- **timestamp-partition**: Time-based partitioning for S3 objects ("seconds", "minutes", "hours", "days", "months", "years"). selecting hours will partition also by days, months, and yeas. 
+- **region**: AWS region for S3 operations and bucket
+- **format**: Data format for S3 storage ("json" or "avro")
+- **max-retries**: Maximum number of retry attempts for S3 operations
+
+##### Coordinator Configuration
+- **skip-shard-sync-at-worker-initialization-if-leases-exist**: Skip shard sync if leases already exist
+- **parent-shard-poll-interval-millis**: Polling interval for parent shards (milliseconds)
+- **shard-consumer-dispatch-poll-interval-millis**: Polling interval for shard consumer dispatch (milliseconds)
+
+##### Lease Management Configuration
+- **shard-sync-interval-millis**: Interval for shard synchronization (milliseconds)
+- **leases-recovery-auditor-inconsistency-confidence-threshold**: Threshold for lease recovery auditor
+- **leases-recovery-auditor-execution-frequency-millis**: Frequency of lease recovery auditor execution
+- **lease-assignment-interval-millis**: Interval for lease assignment (milliseconds)
+
+##### Processor Configuration
+- **call-process-records-even-for-empty-record-list**: Process records even when the list is empty
+
+### Environment Variables
+
+All configuration values can be overridden using environment variables. Environment variables are named by:
+1. Removing the "keyspaces-cdc-streams" prefix
+2. Replacing dots and hyphens with underscores
+3. Converting to uppercase
+
+#### Environment Variable Examples
+
+| Configuration Path | Environment Variable |
+|-------------------|---------------------|
+| `keyspaces-cdc-streams.stream.keyspace-name` | `STREAM_KEYSPACE_NAME` |
+| `keyspaces-cdc-streams.stream.table-name` | `STREAM_TABLE_NAME` |
+| `keyspaces-cdc-streams.stream.region` | `STREAM_REGION` |
+| `keyspaces-cdc-streams.stream.application-name` | `STREAM_APPLICATION_NAME` |
+| `keyspaces-cdc-streams.connector.bucket-id` | `CONNECTOR_BUCKET_ID` |
+| `keyspaces-cdc-streams.connector.prefix` | `CONNECTOR_PREFIX` |
+| `keyspaces-cdc-streams.connector.format` | `CONNECTOR_FORMAT` |
+| `keyspaces-cdc-streams.connector.max-retries` | `CONNECTOR_MAX_RETRIES` |
+| `keyspaces-cdc-streams.coordinator.skip-shard-sync-at-worker-initialization-if-leases-exist` | `COORDINATOR_SKIP_SHARD_SYNC_AT_WORKER_INITIALIZATION_IF_LEASES_EXIST` |
+
+#### Example Environment Variable Usage
+
+```bash
+export STREAM_KEYSPACE_NAME="my-keyspace"
+export STREAM_TABLE_NAME="my-table"
+export STREAM_REGION="us-west-2"
+export CONNECTOR_BUCKET_ID="my-cdc-bucket"
+export CONNECTOR_FORMAT="json"
+export CONNECTOR_MAX_RETRIES="5"
+```
+
+#### Docker/ECS Environment Variables
+
+When running in Docker or ECS, you can set environment variables in your task definition:
+
+```json
+{
+  "environment": [
+    {
+      "name": "STREAM_KEYSPACE_NAME",
+      "value": "my-keyspace"
+    },
+    {
+      "name": "STREAM_TABLE_NAME", 
+      "value": "my-table"
+    },
+    {
+      "name": "CONNECTOR_BUCKET_ID",
+      "value": "my-cdc-bucket"
+    }
+  ]
+}
+```
+
+ 
 ## Quick Start
 
-## Create a keyspace and a table with streams enabled
+### 1. Create a keyspace and a table with streams enabled
 
 ```cql
 CREATE KEYSPACE media WITH replication = {'class': 'SingleRegionStrategy'};
@@ -41,68 +185,16 @@ AND CUSTOM_PROPERTIES = {
 };
 ```
 
-### 2. Build project and move Container to Elastic container registry
+### 2. Deploy Infrastructure
 
-The following script will build this project and move the container image to ECS. 
-```bash
-./move-docker-to-ecr.sh
-```
+For detailed deployment instructions, see the [Infrastructure README](infrastructure-deploy/README.md).
 
-### 3. Configure project 
+The deployment process includes:
+- Building and pushing the Docker image to ECR
+- Configuring deployment parameters
+- Deploying the CloudFormation stack with ECS tasks
 
-Next you will need to configure the paramters file which will be passed into a cloudformation template to deploy the ECS task. 
-
-```bash
-vi parameters.json
-  ```
-## Available Parameters
-
-The following parameters can be configured in the `parameters.json` file:
-
-### Network Configuration
-- **VPCId**: The ID of the VPC where the ECS tasks will be deployed
-- **PrivateSubnetIds**: Comma-separated list of private subnet IDs for the ECS tasks
-- **SecurityGroupIds**: Comma-separated list of security group IDs for the ECS tasks
-- **RouteTableId**: The route table ID for network routing configuration
-
-### Keyspaces Configuration
-- **KeyspaceName**: The name of the Amazon Keyspaces keyspace containing the table with CDC enabled
-- **TableName**: The name of the table in the keyspace that has CDC streams enabled
-- **KeyspacesRegion**: The AWS region where the Keyspaces keyspace is located
-
-### Application Configuration
-- **ApplicationName**: The name of the KCL application that will process the CDC streams
-- **ServiceReplicaCount**: Number of ECS task replicas to run (default: 2)
-- **Cpu**: CPU units allocated to each ECS task (1024 = 1 vCPU)
-- **Memory**: Memory allocated to each ECS task in MB
-
-### S3 Configuration
-- **S3BucketId**: The name of the S3 bucket where CDC data will be stored
-- **S3Region**: The AWS region where the S3 bucket is located
-- **S3Format**: The format for storing data in S3 (supported: "json", "avro")
-
-### Container Configuration
-- **ECRImage**: The ECR image URI for the container that will process the streams
-
-### VPC Endpoint Configuration
-- **CreateKeyspacesEndpoint**: Whether to create a VPC endpoint for Amazon Keyspaces (true/false)
-- **CreateKeyspacesStreamsEndpoint**: Whether to create a VPC endpoint for Keyspaces CDC Streams (true/false)
-- **CreateECREndpoints**: Whether to create VPC endpoints for ECR (true/false)
-- **CreateSTSEndpoint**: Whether to create a VPC endpoint for AWS STS (true/false)
-- **CreateCloudWatchEndpoints**: Whether to create VPC endpoints for CloudWatch (true/false)
-- **CreateKinesisEndpoint**: Whether to create a VPC endpoint for Kinesis (true/false)
-- **CreateDynamoDBEndpoint**: Whether to create a VPC endpoint for DynamoDB (true/false)
-- **CreateS3Endpoint**: Whether to create a VPC endpoint for S3 (true/false)
-
-### 4. Execute the CloudFormation template with the parameters file
-
-execute the following script to deploy the cloudfromation template.
-```
-./ create-stack-with-json.sh
-```
-
-
-### 5. Test with Sample Data
+### 3. Test with Sample Data
 
 Insert some test records:
 
@@ -112,9 +204,9 @@ INSERT INTO media.media_content (content_id, title, creator_id, media_type, uplo
 INSERT INTO media.media_content (content_id, title, creator_id, media_type, upload_timestamp, status) VALUES (uuid(), 'Podcast Episode 1', uuid(), 'audio', toTimestamp(now()), 'active');
 ```
 
-### 6. Verify S3 Output
+### 4. Verify S3 Output
 
-Records are stored in S3 in the bucket provided
+Records are stored in S3 in the bucket you configured during deployment.
 
 
 
@@ -123,14 +215,14 @@ Records are stored in S3 in the bucket provided
 - [Amazon Keyspaces (for Apache Cassandra) now supports Change Data Capture (CDC) Streams](https://aws.amazon.com/about-aws/whats-new/2025/07/amazon-keyspaces-apache-cassandra-cdc-streams/)
 - [Working with change data capture (CDC) streams in Amazon Keyspaces](https://docs.aws.amazon.com/keyspaces/latest/devguide/cdc.html)
 
-### Service Best practices
+### Service Best Practices
 
 - [Best practices for designing and architecting with Amazon Keyspaces (for Apache Cassandra)](https://docs.aws.amazon.com/keyspaces/latest/devguide/best-practices.html)
 - [Amazon ECS best practices](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-best-practices.html)
 - [Best practices design patterns: optimizing Amazon S3 performance](https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html)
 - [Best practices for designing and architecting with DynamoDB](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/best-practices.html)
 
-### Security best practices
+### Security Best Practices
 
 - [Security best practices for Amazon Keyspaces](https://docs.aws.amazon.com/keyspaces/latest/devguide/best-practices-security.html)
 - [Security best practices and use cases in AWS Identity and Access Management](https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices-use-cases.html)

@@ -8,6 +8,17 @@ AWS_REPO_NAME="amazon-keyspaces-streams"
 IMAGE_TAG="latest"
 IMAGE_NAME="aks-streams-connector"
 
+# Build project from parent directory
+if [ -d "../kcl-keyspaces-core" ]; then
+    echo "moving to parent directory"
+    cd ..
+elif [ -d "kcl-keyspaces-core" ]; then 
+    echo "in parent directory"
+else
+    echo "kcl-keyspaces-core directory not found"
+    exit 1
+fi
+
 # Authenticate with ECR
 aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com
 
@@ -19,7 +30,7 @@ mkdir -p certs
 #curl -o certs/sf-class2-root.crt https://certs.secureserver.net/repository/sf-class2-root.crt
 
 # Build locally
-docker build -f Dockerfile --platform linux/amd64 -t ${IMAGE_NAME}:${IMAGE_TAG} .
+docker build -f infrastructure-deploy/Dockerfile --platform linux/amd64 -t ${IMAGE_NAME}:${IMAGE_TAG} .
 
 docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${AWS_REPO_NAME}:${IMAGE_TAG}
 
