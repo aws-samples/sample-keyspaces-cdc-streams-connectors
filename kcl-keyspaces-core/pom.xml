@@ -18,28 +18,20 @@
     <description>Core KCL Keyspaces connector library</description>
 
     <dependencies>
-        <dependency>
-            <groupId>org.apache.arrow</groupId>
-            <artifactId>arrow-vector</artifactId>
-            <version>18.3.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.arrow</groupId>
-            <artifactId>arrow-memory-core</artifactId>
-            <version>18.3.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.arrow</groupId>
-            <artifactId>arrow-memory-netty</artifactId>
-            <version>18.3.0</version>
-        </dependency>
+        
+        
         
         <dependency>
-            <groupId>org.apache.parquet</groupId>
-            <artifactId>parquet-arrow</artifactId>
-            <version>1.15.2</version>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>bedrockruntime</artifactId>
+            <version>${aws.sdk.version}</version>
         </dependency>
-
+         <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>s3vectors</artifactId>
+                <version>${aws.sdk.version}</version>
+            </dependency>
+       
         <!-- AWS KCL 3 -->
         <dependency>
             <groupId>software.amazon.kinesis</groupId>
@@ -71,7 +63,7 @@
             <artifactId>aws-core</artifactId>
             <version>${aws.sdk.version}</version>
         </dependency>
-
+        
         <!-- AWS SDK v2 -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
@@ -124,11 +116,7 @@
         </dependency>
 
         <!-- JSON Processing -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>2.15.2</version>
-        </dependency>
+       
 
         <!-- Testing -->
         <dependency>

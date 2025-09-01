@@ -37,12 +37,12 @@ public class S3TargetMapper implements ITargetMapper {
    
     public S3TargetMapper(Config config) {
 
-        this.bucketName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.bucket-id", null);
-        this.prefix = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.prefix", "");
-        this.regionName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.region", "us-east-1");
-        this.format = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.format", "avro");
-        this.timestampPartition = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.timestamp-partition", "hours");
-        this.maxRetries = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.max-retries", 3);
+        this.bucketName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.bucket-id", "", true);
+        this.prefix = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.prefix", "", false);
+        this.regionName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.region", "us-east-1", true);
+        this.format = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.format", "avro", false);
+        this.timestampPartition = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.timestamp-partition", "hours", false);
+        this.maxRetries = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.max-retries", 3, false);
         this.s3Client = S3Client.builder().region(Region.of(regionName)).build();
     }
 
@@ -140,7 +140,5 @@ public class S3TargetMapper implements ITargetMapper {
                     }
                 }
             }
-
-
      }
 }

@@ -2,6 +2,8 @@ package software.amazon.ssa.streams.config;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 import com.datastax.oss.driver.api.core.CqlSession;
@@ -167,7 +169,7 @@ public class KeyspacesConfig {
      */
     public String getStreamArn() {
         try {
-            if(streamArn != null) {
+            if(streamArn != null && !streamArn.isEmpty()) {
                 return streamArn;
             }
 
@@ -180,7 +182,7 @@ public class KeyspacesConfig {
                .listStreams(listStreamsRequest);
             
             for (Stream stream : listStreamsResponse.streams()) {
-                if(streamName  != null) {
+                if(streamName  != null && !streamName.isEmpty()) {
                     if (stream.keyspaceName().equalsIgnoreCase(keyspaceName) && stream.tableName().equalsIgnoreCase(tableName) 
                     && stream.streamLabel().equalsIgnoreCase(streamName)) {
                         return stream.streamArn();
@@ -209,7 +211,7 @@ public class KeyspacesConfig {
      * @param defaultValue The default value if not found
      * @return The configuration value (environment variable takes precedence)
      */
-    public static String getConfigValue(Config conf, String configPath, String defaultValue) {
+    public static String getConfigValue(Config conf, String configPath, String defaultValue, boolean isRequired) {
         // Convert config path to environment variable name
         String envVarName = convertToEnvVarName(configPath);
         String envValue = System.getenv(envVarName);
@@ -218,14 +220,33 @@ public class KeyspacesConfig {
             logger.info("Using environment variable {} for config path {}", envVarName, configPath);
             return envValue;
         }
+        if(isRequired && !conf.hasPath(configPath)) {
+            throw new IllegalArgumentException("Configuration value is required: " + configPath);
+        }
         
         return conf.hasPath(configPath) ? conf.getString(configPath) : defaultValue;
+    }
+    public static List<String> getConfigValue(Config conf, String configPath, List<String> defaultValue, boolean isRequired) {
+        // Convert config path to environment variable name
+        String envVarName = convertToEnvVarName(configPath);
+        String envValue = System.getenv(envVarName);
+        
+        if (envValue != null) {
+            logger.info("Using environment variable {} for config path {}", envVarName, configPath);
+            return Arrays.asList(envValue.split(","));
+        }
+
+        if(isRequired && !conf.hasPath(configPath)) {
+            throw new IllegalArgumentException("Configuration value is required: " + configPath);
+        }
+        
+        return conf.hasPath(configPath) ? conf.getStringList(configPath) : defaultValue;
     }
     
     /**
      * Helper method to get boolean configuration value with environment variable override.
      */
-    public static boolean getConfigValue(Config conf, String configPath, boolean defaultValue) {
+    public static boolean getConfigValue(Config conf, String configPath, boolean defaultValue, boolean isRequired) {
         String envVarName = convertToEnvVarName(configPath);
         String envValue = System.getenv(envVarName);
         
@@ -234,13 +255,17 @@ public class KeyspacesConfig {
             return Boolean.parseBoolean(envValue);
         }
         
+        if(isRequired && !conf.hasPath(configPath)) {
+            throw new IllegalArgumentException("Configuration value is required: " + configPath);
+        }
+
         return conf.hasPath(configPath) ? conf.getBoolean(configPath) : defaultValue;
     }
     
     /**
      * Helper method to get integer configuration value with environment variable override.
      */
-    public static int getConfigValue(Config conf, String configPath, int defaultValue) {
+    public static int getConfigValue(Config conf, String configPath, int defaultValue, boolean isRequired) {
         String envVarName = convertToEnvVarName(configPath);
         String envValue = System.getenv(envVarName);
         
@@ -253,6 +278,9 @@ public class KeyspacesConfig {
                 return defaultValue;
             }
         }
+        if(isRequired && !conf.hasPath(configPath)) {
+            throw new IllegalArgumentException("Configuration value is required: " + configPath);
+        }
         
         return conf.hasPath(configPath) ? conf.getInt(configPath) : defaultValue;
     }
@@ -260,7 +288,7 @@ public class KeyspacesConfig {
     /**
      * Helper method to get long configuration value with environment variable override.
      */
-    public static long getConfigValue(Config conf, String configPath, long defaultValue) {
+    public static long getConfigValue(Config conf, String configPath, long defaultValue, boolean isRequired) {
         String envVarName = convertToEnvVarName(configPath);
         String envValue = System.getenv(envVarName);
         
@@ -272,6 +300,9 @@ public class KeyspacesConfig {
                 logger.warn("Invalid long value in environment variable {}: {}", envVarName, envValue);
                 return defaultValue;
             }
+        }
+        if(isRequired && !conf.hasPath(configPath)) {
+            throw new IllegalArgumentException("Configuration value is required: " + configPath);
         }
         
         return conf.hasPath(configPath) ? conf.getLong(configPath) : defaultValue;
@@ -304,24 +335,24 @@ public class KeyspacesConfig {
        
         Config conf = ConfigFactory.load(configPath);
 
-        keyspaceName = getConfigValue(conf, "keyspaces-cdc-streams.stream.keyspace-name", null);
-        tableName = getConfigValue(conf, "keyspaces-cdc-streams.stream.table-name", null);
-        streamName = getConfigValue(conf, "keyspaces-cdc-streams.stream.stream-name", null);
-        region = getConfigValue(conf, "keyspaces-cdc-streams.stream.region", null);
-        streamArn = getConfigValue(conf, "keyspaces-cdc-streams.stream.stream-arn", null);
-        applicationName = getConfigValue(conf, "keyspaces-cdc-streams.stream.application-name", "my-stream-app");
+        keyspaceName = getConfigValue(conf, "keyspaces-cdc-streams.stream.keyspace-name", "", false);
+        tableName = getConfigValue(conf, "keyspaces-cdc-streams.stream.table-name", "", false);
+        streamName = getConfigValue(conf, "keyspaces-cdc-streams.stream.stream-name", "", false);
+        region = getConfigValue(conf, "keyspaces-cdc-streams.stream.region", "", true);
+        streamArn = getConfigValue(conf, "keyspaces-cdc-streams.stream.stream-arn", "", false);
+        applicationName = getConfigValue(conf, "keyspaces-cdc-streams.stream.application-name", "my-stream-app", true);
         
-        skipShardSyncAtWorkerInitializationIfLeasesExist = getConfigValue(conf, "keyspaces-cdc-streams.coordinator.skip-shard-sync-at-worker-initialization-if-leases-exist", true);
-        parentShardPollIntervalMillis = getConfigValue(conf, "keyspaces-cdc-streams.coordinator.parent-shard-poll-interval-millis", 1000);
-        shardConsumerDispatchPollIntervalMillis = getConfigValue(conf, "keyspaces-cdc-streams.coordinator.shard-consumer-dispatch-poll-interval-millis", 500);
+        skipShardSyncAtWorkerInitializationIfLeasesExist = getConfigValue(conf, "keyspaces-cdc-streams.coordinator.skip-shard-sync-at-worker-initialization-if-leases-exist", true, false);
+        parentShardPollIntervalMillis = getConfigValue(conf, "keyspaces-cdc-streams.coordinator.parent-shard-poll-interval-millis", 1000, false);
+        shardConsumerDispatchPollIntervalMillis = getConfigValue(conf, "keyspaces-cdc-streams.coordinator.shard-consumer-dispatch-poll-interval-millis", 500, false);
 
        
-        shardSyncIntervalMillis = getConfigValue(conf, "keyspaces-cdc-streams.lease-management.shard-sync-interval-millis", 60000);
-        leasesRecoveryAuditorInconsistencyConfidenceThreshold = getConfigValue(conf, "keyspaces-cdc-streams.lease-management.leases-recovery-auditor-inconsistency-confidence-threshold", 3);
-        leasesRecoveryAuditorExecutionFrequencyMillis = getConfigValue(conf, "keyspaces-cdc-streams.lease-management.leases-recovery-auditor-execution-frequency-millis", 5000);
-        leaseAssignmentIntervalMillis = getConfigValue(conf, "keyspaces-cdc-streams.lease-management.lease-assignment-interval-millis", 1000L);
+        shardSyncIntervalMillis = getConfigValue(conf, "keyspaces-cdc-streams.lease-management.shard-sync-interval-millis", 60000, false);
+        leasesRecoveryAuditorInconsistencyConfidenceThreshold = getConfigValue(conf, "keyspaces-cdc-streams.lease-management.leases-recovery-auditor-inconsistency-confidence-threshold", 3, false);
+        leasesRecoveryAuditorExecutionFrequencyMillis = getConfigValue(conf, "keyspaces-cdc-streams.lease-management.leases-recovery-auditor-execution-frequency-millis", 5000, false);
+        leaseAssignmentIntervalMillis = getConfigValue(conf, "keyspaces-cdc-streams.lease-management.lease-assignment-interval-millis", 1000L, false);
 
-        callProcessRecordsEvenForEmptyRecordList = getConfigValue(conf, "keyspaces-cdc-streams.processor.call-process-records-even-for-empty-record-list", true);
+        callProcessRecordsEvenForEmptyRecordList = getConfigValue(conf, "keyspaces-cdc-streams.processor.call-process-records-even-for-empty-record-list", true, false);
 
     }
 

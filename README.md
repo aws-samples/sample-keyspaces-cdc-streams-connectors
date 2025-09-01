@@ -85,7 +85,7 @@ keyspaces-cdc-streams {
 ##### S3 Connector Configuration
 - **bucket-id**: S3 bucket name for storing CDC data
 - **prefix**: S3 key prefix for organizing data (e.g., "export/keyspace/table/incremental")
-- **timestamp-partition**: Time-based partitioning for S3 objects ("seconds", "minutes", "hours", "days", "months", "years"). selecting hours will partition also by days, months, and yeas. 
+- **timestamp-partition**: Time-based partitioning for S3 objects ("seconds", "minutes", "hours", "days", "months", "years"). selecting hours will partition also by days, months, and years. 
 - **region**: AWS region for S3 operations and bucket
 - **format**: Data format for S3 storage ("json" or "avro")
 - **max-retries**: Maximum number of retry attempts for S3 operations
