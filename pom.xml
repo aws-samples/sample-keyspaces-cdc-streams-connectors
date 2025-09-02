@@ -16,6 +16,8 @@
     <modules>
         <module>kcl-keyspaces-core</module>
         <module>kcl-keyspaces-app</module>
+        <module>s3-bucket-connector</module>
+        <module>s3-vector-connector</module>
     </modules>
 
     <properties>

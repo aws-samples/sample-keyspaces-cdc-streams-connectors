@@ -1,4 +1,4 @@
-package software.amazon.ssa.streams.connector.s3vector;
+package software.amazon.ssa.streams.connector.s3;
 
 import java.util.List;
 import java.util.Map;
@@ -27,6 +27,24 @@ import software.amazon.awssdk.services.keyspacesstreams.model.KeyspacesCell;
 import software.amazon.awssdk.services.keyspacesstreams.model.KeyspacesCellValue.Type;
 import software.amazon.awssdk.services.s3vectors.model.PutInputVector.Builder;
 
+/**
+ * S3 Vector Target Mapper for Amazon Keyspaces CDC Streams
+ * 
+ * This connector writes Keyspaces CDC records to Amazon S3 Vector Store with vector embeddings.
+ * It uses Amazon Bedrock to generate embeddings from text fields and stores them in S3 Vector Store
+ * for similarity search and vector operations.
+ * 
+ * Configuration:
+ * - bucket-id: S3 Vector bucket name (required)
+ * - region: AWS region (default: us-east-1)
+ * - max-retries: Maximum retry attempts for S3 Vector operations (default: 3)
+ * - embedding-model: Bedrock model for generating embeddings (default: amazon.titan-embed-text-v2:0)
+ * - index-name: S3 Vector index name (required)
+ * - embedding-field: Field name to generate embeddings from (required)
+ * - key-field: Field name to use as vector key (required)
+ * - metadata-fields: List of fields to include as metadata (optional)
+ * - dimensions: Vector dimensions (default: 256)
+ */
 public class S3VectorTargetMapper implements ITargetMapper {
 
     private static final Logger logger = LoggerFactory.getLogger(S3VectorTargetMapper.class);
@@ -42,11 +60,8 @@ public class S3VectorTargetMapper implements ITargetMapper {
     private VectorHelper vectorHelper;
     private int dimensions;
     private S3VectorsClient s3VectorsClient;
-    
-   // Schema definition for Keyspaces CDC records with valueCells structure
    
     public S3VectorTargetMapper(Config config) {
-
         this.bucketName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.bucket-id", "", true);
         this.regionName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.region", "us-east-1", true);
         this.maxRetries = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.max-retries", 3, false);
@@ -74,97 +89,71 @@ public class S3VectorTargetMapper implements ITargetMapper {
 
         List<PutInputVector> toPut = new ArrayList<>();
                
-            for (KeyspacesStreamsClientRecord record : records) {
+        for (KeyspacesStreamsClientRecord record : records) {
+            Builder putInputVectorBuilder = PutInputVector.builder();
+            MapBuilder metaDataFieldsDocument = Document.mapBuilder();
 
-                Builder putInputVectorBuilder = PutInputVector.builder();
+            for (Map.Entry<String, KeyspacesCell> entry : record.getRecord().newImage().valueCells().entrySet()) {
+                Type cellType = entry.getValue().value().type();
+                Class<?> javaType = StreamHelpers.mapCqlTypeToJavaType(cellType);
 
-                MapBuilder metaDataFieldsDocument = Document.mapBuilder();
-
-                for (Map.Entry<String, KeyspacesCell> entry : record.getRecord().newImage().valueCells().entrySet()) {
-                        
-                        Type cellType = entry.getValue().value().type();
-                            
-                        Class<?> javaType = StreamHelpers.mapCqlTypeToJavaType(cellType);
-
-                        if(entry.getKey().equals(embeddingField)){
-                           
-                            if(javaType == String.class){
-                                    String text = entry.getValue().value().textT();
-
-                                    List<Float> asFloat32 = vectorHelper.writeRecordsToVectors(text, dimensions);
-                                    
-                                    putInputVectorBuilder.data(VectorData.builder().float32(asFloat32).build());
-                            }else {
-                                throw new IllegalArgumentException("Unsupported CQL type for vector index embedding: " + cellType);
-                            }
-                               
-                        }else if(entry.getKey().equals(keyField)){
-                            
-                            if(javaType == String.class){
-                                String text = entry.getValue().value().textT();
-                                
-                                putInputVectorBuilder.key(text);
-
-                            }else{
-                                throw new IllegalArgumentException("Unsupported CQL type for vector index key: " + cellType);
-                            }
-                        }else if (metadataFields.contains(entry.getKey())){
-                            
-                            if(javaType == String.class){
-                                String text = entry.getValue().value().textT();
-                                
-                                metaDataFieldsDocument
-                                        .putString(entry.getKey(), text);
-                            }else if(javaType == Integer.class){
-                                Integer number = (Integer)StreamHelpers.getValueFromCell(entry);
-                                
-                                metaDataFieldsDocument.putNumber(bucketName, number);
-
-                            }else if(javaType == Long.class){
-                                Long number = (Long)StreamHelpers.getValueFromCell(entry);
-                                
-                                metaDataFieldsDocument.putNumber(bucketName, number);
-                                
-                            }else if(javaType == Float.class){
-                                Float number =  (Float)StreamHelpers.getValueFromCell(entry);
-                                
-                                metaDataFieldsDocument.putNumber(bucketName, number);
-                            }else if(javaType == Double.class){
-                                Double number =  (Double)StreamHelpers.getValueFromCell(entry);
-                                
-                                metaDataFieldsDocument.putNumber(bucketName, number);
-                            }else if(javaType == Boolean.class){
-                                Boolean booleanValue = (Boolean)StreamHelpers.getValueFromCell(entry);
-                                
-                                metaDataFieldsDocument.putBoolean(bucketName, booleanValue);
-                            }else{
-                                throw new IllegalArgumentException("Unsupported CQL type for vector index metadata: " + cellType);
-                            }
-                        }
+                if(entry.getKey().equals(embeddingField)){
+                    if(javaType == String.class){
+                        String text = entry.getValue().value().textT();
+                        List<Float> asFloat32 = vectorHelper.writeRecordsToVectors(text, dimensions);
+                        putInputVectorBuilder.data(VectorData.builder().float32(asFloat32).build());
+                    } else {
+                        throw new IllegalArgumentException("Unsupported CQL type for vector index embedding: " + cellType);
+                    }
+                } else if(entry.getKey().equals(keyField)){
+                    if(javaType == String.class){
+                        String text = entry.getValue().value().textT();
+                        putInputVectorBuilder.key(text);
+                    } else {
+                        throw new IllegalArgumentException("Unsupported CQL type for vector index key: " + cellType);
+                    }
+                } else if (metadataFields.contains(entry.getKey())){
+                    if(javaType == String.class){
+                        String text = entry.getValue().value().textT();
+                        metaDataFieldsDocument.putString(entry.getKey(), text);
+                    } else if(javaType == Integer.class){
+                        Integer number = (Integer)StreamHelpers.getValueFromCell(entry);
+                        metaDataFieldsDocument.putNumber(entry.getKey(), number);
+                    } else if(javaType == Long.class){
+                        Long number = (Long)StreamHelpers.getValueFromCell(entry);
+                        metaDataFieldsDocument.putNumber(entry.getKey(), number);
+                    } else if(javaType == Float.class){
+                        Float number = (Float)StreamHelpers.getValueFromCell(entry);
+                        metaDataFieldsDocument.putNumber(entry.getKey(), number);
+                    } else if(javaType == Double.class){
+                        Double number = (Double)StreamHelpers.getValueFromCell(entry);
+                        metaDataFieldsDocument.putNumber(entry.getKey(), number);
+                    } else if(javaType == Boolean.class){
+                        Boolean booleanValue = (Boolean)StreamHelpers.getValueFromCell(entry);
+                        metaDataFieldsDocument.putBoolean(entry.getKey(), booleanValue);
+                    } else {
+                        throw new IllegalArgumentException("Unsupported CQL type for vector index metadata: " + cellType);
+                    }
                 }
-                putInputVectorBuilder.metadata(metaDataFieldsDocument.build());
-
-                toPut.add(putInputVectorBuilder.build());
-                
             }
-            // 5) Put vectors into the index
+            putInputVectorBuilder.metadata(metaDataFieldsDocument.build());
+            toPut.add(putInputVectorBuilder.build());
+        }
            
         boolean success = false;
         
         for (int attempt = 0; attempt < maxRetries && !success; attempt++) {
             try {
                 PutVectorsRequest putReq = PutVectorsRequest.builder()
-                .vectorBucketName(bucketName)
-                .indexName(indexName)
-                .vectors(toPut)
-                .build();
+                    .vectorBucketName(bucketName)
+                    .indexName(indexName)
+                    .vectors(toPut)
+                    .build();
                 
                 S3VectorsClient s3VectorsClient = getOrCreateS3VectorsClient();
-
                 PutVectorsResponse resp = s3VectorsClient.putVectors(putReq);
                 
                 success = true;
-                
                 logger.debug("Successfully wrote {} records to S3Vector index: {} bucket: {}", records.size(), indexName, bucketName);
             } catch (Exception s3Error) {
                 logger.warn("S3Vector write attempt {} failed: {}", attempt, s3Error.getMessage());
@@ -175,8 +164,9 @@ public class S3VectorTargetMapper implements ITargetMapper {
                 }
             }
         }
-     }
-     private synchronized S3VectorsClient getOrCreateS3VectorsClient(){
+    }
+    
+    private synchronized S3VectorsClient getOrCreateS3VectorsClient(){
         if(s3VectorsClient == null){
             s3VectorsClient = S3VectorsClient.builder()
                 .region(Region.of(regionName))

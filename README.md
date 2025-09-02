@@ -3,7 +3,18 @@
 Move data from Amazon Keyspaces to different downstream targets using Keyspaces CDC Streams connectors. This library will allow you to deploy a Kinesis Client Library (KCL)-based application to stream data from your Keyspaces. The goal is to simplify connecting data sources to different targets. Different connectors can be added by extending the ITargetMapper interface. Configuration properties can be exposed in the application.conf or environment variables.  
 
 ## Currently Available Connectors
-- Connector to S3 with supported formats: JSON, Avro. 
+
+### S3 Bucket Connector (`s3-bucket-connector`)
+- Connector to S3 with supported formats: JSON, Avro
+- Time-based partitioning support
+- Configurable retry logic
+- [Detailed Documentation](s3-bucket-connector/README.md)
+
+### S3 Vector Connector (`s3-vector-connector`)
+- Connector to S3 Vector Store with vector embeddings
+- Amazon Bedrock integration for embedding generation
+- Support for metadata fields
+- [Detailed Documentation](s3-vector-connector/README.md) 
 
 ## Architecture
 
@@ -40,6 +51,7 @@ keyspaces-cdc-streams {
         # stream-arn = "arn:aws:kinesis:us-east-1:123456789012:stream/your-stream"
     }
     
+    # S3 Bucket Connector Configuration
     connector {
         target-mapper = "software.amazon.ssa.streams.connector.s3.S3TargetMapper"
         bucket-id = "your-s3-bucket-name"
@@ -49,6 +61,20 @@ keyspaces-cdc-streams {
         format = "avro"  # or "json"
         max-retries = 3
     }
+    
+    # S3 Vector Connector Configuration (alternative to S3 Bucket Connector)
+    # connector {
+    #     target-mapper = "software.amazon.ssa.streams.connector.s3.S3VectorTargetMapper"
+    #     bucket-id = "your-vector-bucket-name"
+    #     region = "us-east-1"
+    #     max-retries = 3
+    #     embedding-model = "amazon.titan-embed-text-v2:0"
+    #     index-name = "your-vector-index"
+    #     embedding-field = "description"
+    #     key-field = "id"
+    #     metadata-fields = ["title", "category"]
+    #     dimensions = 256
+    # }
     
     coordinator {
         skip-shard-sync-at-worker-initialization-if-leases-exist = true
@@ -82,13 +108,24 @@ keyspaces-cdc-streams {
 ##### Connector Configuration
 - **target-mapper**: Fully qualified class name of the target mapper implementation
 
-##### S3 Connector Configuration
+##### S3 Bucket Connector Configuration
 - **bucket-id**: S3 bucket name for storing CDC data
 - **prefix**: S3 key prefix for organizing data (e.g., "export/keyspace/table/incremental")
 - **timestamp-partition**: Time-based partitioning for S3 objects ("seconds", "minutes", "hours", "days", "months", "years"). selecting hours will partition also by days, months, and years. 
 - **region**: AWS region for S3 operations and bucket
 - **format**: Data format for S3 storage ("json" or "avro")
 - **max-retries**: Maximum number of retry attempts for S3 operations
+
+##### S3 Vector Connector Configuration
+- **bucket-id**: S3 Vector bucket name for storing vector embeddings
+- **region**: AWS region for S3 Vector and Bedrock operations
+- **max-retries**: Maximum number of retry attempts for S3 Vector operations
+- **embedding-model**: Bedrock model for generating embeddings (default: "amazon.titan-embed-text-v2:0")
+- **index-name**: S3 Vector index name
+- **embedding-field**: Field name to generate embeddings from
+- **key-field**: Field name to use as vector key
+- **metadata-fields**: List of fields to include as metadata
+- **dimensions**: Vector dimensions (default: 256)
 
 ##### Coordinator Configuration
 - **skip-shard-sync-at-worker-initialization-if-leases-exist**: Skip shard sync if leases already exist

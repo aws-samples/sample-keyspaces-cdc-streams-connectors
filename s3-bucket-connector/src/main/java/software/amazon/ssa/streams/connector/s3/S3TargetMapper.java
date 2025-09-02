@@ -22,6 +22,20 @@ import software.amazon.ssa.streams.connector.ITargetMapper;
 import software.amazon.ssa.streams.helpers.AvroHelper;
 import software.amazon.ssa.streams.helpers.JSONHelper;
 
+/**
+ * S3 Target Mapper for Amazon Keyspaces CDC Streams
+ * 
+ * This connector writes Keyspaces CDC records to Amazon S3 in either Avro or JSON format.
+ * It supports time-based partitioning and configurable retry logic for reliable data delivery.
+ * 
+ * Configuration:
+ * - bucket-id: S3 bucket name (required)
+ * - prefix: S3 key prefix for organizing files (optional)
+ * - region: AWS region (default: us-east-1)
+ * - format: Output format - "avro" or "json" (default: avro)
+ * - timestamp-partition: Time partitioning granularity (default: hours)
+ * - max-retries: Maximum retry attempts for S3 operations (default: 3)
+ */
 public class S3TargetMapper implements ITargetMapper {
 
     private static final Logger logger = LoggerFactory.getLogger(S3TargetMapper.class);
@@ -33,10 +47,8 @@ public class S3TargetMapper implements ITargetMapper {
     private String format;
     private String timestampPartition;
     private int maxRetries;
-   // Schema definition for Keyspaces CDC records with valueCells structure
    
     public S3TargetMapper(Config config) {
-
         this.bucketName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.bucket-id", "", true);
         this.prefix = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.prefix", "", false);
         this.regionName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.region", "us-east-1", true);
@@ -58,14 +70,11 @@ public class S3TargetMapper implements ITargetMapper {
             return;
         }
 
-        
-
         StringBuilder time = new StringBuilder();
         
         Deque<String> dq = new ArrayDeque<String>();
               
         switch(timestampPartition) {
-
             case "seconds":
                 dq.addFirst(String.format("%02d/", LocalDateTime.now().getSecond()));
             case "minutes":
@@ -81,64 +90,61 @@ public class S3TargetMapper implements ITargetMapper {
                 break;
             default:
                 logger.error("No timestamp partition selected: " + timestampPartition);
-            }
+        }
 
-            StringBuilder partitionBuilder = new StringBuilder();
+        StringBuilder partitionBuilder = new StringBuilder();
+        dq.forEach(partitionBuilder::append);
+        String partition = partitionBuilder.toString();
 
-            dq.forEach(partitionBuilder::append);
+        String firstSequenceNumber = records.get(0).sequenceNumber();
+        String lastSequenceNumber = records.get(records.size() - 1).sequenceNumber();
+        Instant timestamp = Instant.now();
 
-            String partition = partitionBuilder.toString();
+        // Create filename with sequence range and timestamp
+        String filename = String.format("%s-%s-%d.%s", 
+            firstSequenceNumber,
+            lastSequenceNumber,
+            timestamp.toEpochMilli(),
+            format.equalsIgnoreCase("avro") ? "avro" : "json");
+        
+        String key = "";
+        if (partition.length() > 0) {
+            key = String.format("%s/%s/%s", prefix, partition, filename).replace("//", "/");
+        } else {
+            key = String.format("%s/%s", prefix, filename).replace("//", "/");
+        }
 
-            String firstSequenceNumber = records.get(0).sequenceNumber();
-            String lastSequenceNumber = records.get(records.size() - 1).sequenceNumber();
-            Instant timestamp = Instant.now();
+        logger.info("Processing {} records for S3 upload", records.size());
+        
+        byte[] data;
+        if(format.equalsIgnoreCase("avro")) {
+            data = AvroHelper.writeRecordsToAvro(records);
+        } else if(format.equals("json")) {
+            data = JSONHelper.writeRecordsToJSON(records);
+        } else {
+            throw new IllegalArgumentException("Invalid format: " + format);
+        }
 
-            // Create filename with sequence range and timestamp
-            String filename = String.format("%s-%s-%d.json", 
-                firstSequenceNumber,
-                lastSequenceNumber,
-                timestamp.toEpochMilli());
-            
-            String key = "";
-
-            if (partition.length() > 0) {
-                key = String.format("%s/%s/%s", prefix, partition, filename).replace("//", "/");
-                
-            }else{
-                key = String.format("%s/%s", prefix, filename).replace("//", "/")  ;
-            }
-
-            logger.info("Processing {} records for S3 Parquet upload", records.size());
-            
-            byte[] data;
-            if(format.equalsIgnoreCase("avro")) {
-                data = AvroHelper.writeRecordsToAvro(records);
-              } else if(format.equals("json")) {
-                data = JSONHelper.writeRecordsToJSON(records);
-             } else {
-                throw new IllegalArgumentException("Invalid format: " + format);
-            }
-
-            boolean success = false;
-            for (int attempt = 0; attempt < maxRetries && !success; attempt++) {
-                try {
-                    s3Client.putObject(
-                        PutObjectRequest.builder()
-                            .bucket(bucketName)
-                            .key(key)
-                            .build(),
-                        RequestBody.fromBytes(data)
-                    );
-                    success = true;
-                    logger.info("Successfully wrote {} records to S3: {}", records.size(), key);
-                } catch (Exception s3Error) {
-                    logger.warn("S3 write attempt {} failed: {}", attempt, s3Error.getMessage());
-                    if (attempt < maxRetries-1) {
-                        Thread.sleep(10 * attempt); // Exponential backoff
-                    } else {
-                        throw s3Error;
-                    }
+        boolean success = false;
+        for (int attempt = 0; attempt < maxRetries && !success; attempt++) {
+            try {
+                s3Client.putObject(
+                    PutObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(key)
+                        .build(),
+                    RequestBody.fromBytes(data)
+                );
+                success = true;
+                logger.info("Successfully wrote {} records to S3: {}", records.size(), key);
+            } catch (Exception s3Error) {
+                logger.warn("S3 write attempt {} failed: {}", attempt, s3Error.getMessage());
+                if (attempt < maxRetries-1) {
+                    Thread.sleep(10 * attempt); // Exponential backoff
+                } else {
+                    throw s3Error;
                 }
             }
-     }
+        }
+    }
 }

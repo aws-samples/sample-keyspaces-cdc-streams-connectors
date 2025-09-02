@@ -14,13 +14,16 @@ WORKDIR /app
 COPY  pom.xml ./
 COPY  kcl-keyspaces-core/pom.xml ./kcl-keyspaces-core/
 COPY  kcl-keyspaces-app/pom.xml ./kcl-keyspaces-app/
-
+COPY  s3-bucket-connector/pom.xml ./s3-bucket-connector/
+COPY  s3-vector-connector/pom.xml ./s3-vector-connector/
 # Download dependencies (this layer will be cached if pom files don't change)
 RUN mvn dependency:go-offline -B
 
 # Copy source code
 COPY kcl-keyspaces-core/src ./kcl-keyspaces-core/src
 COPY kcl-keyspaces-app/src ./kcl-keyspaces-app/src
+COPY s3-bucket-connector/src ./s3-bucket-connector/src
+COPY s3-vector-connector/src ./s3-vector-connector/src
 
 # Build the application with shade plugin to create fat JAR
 RUN mvn clean package -DskipTests
@@ -42,6 +45,8 @@ WORKDIR /app
 
 # Copy the built JAR from builder stage
 COPY --from=builder /app/kcl-keyspaces-app/target/kcl-keyspaces-app-1.0.0.jar ./app.jar
+COPY --from=builder /app/s3-bucket-connector/target/s3-bucket-connector-1.0.0.jar ./app.jar
+COPY --from=builder /app/s3-vector-connector/target/s3-vector-connector-1.0.0.jar ./app.jar
 
 # Copy configuration files
 COPY --from=builder /app/kcl-keyspaces-app/src/main/resources/application.conf ./application.conf

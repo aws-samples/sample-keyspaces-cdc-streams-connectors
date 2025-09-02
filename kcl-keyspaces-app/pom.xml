@@ -25,6 +25,18 @@
             <version>${project.version}</version>
         </dependency>
 
+         <dependency>
+            <groupId>software.amazon.ssa</groupId>
+            <artifactId>s3-vector-connector</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.ssa</groupId>
+            <artifactId>s3-bucket-connector</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+      
+
         <!-- Logging -->
         <dependency>
             <groupId>org.slf4j</groupId>
