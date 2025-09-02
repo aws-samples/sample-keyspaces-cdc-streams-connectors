@@ -32,7 +32,7 @@ Add this module as a dependency to the kcl-keyspaces-app project and add the S3T
 
 ## Configuration
 
-Configure the connector in your `application.conf` file:
+Configure the connector in your `stream-application.conf` file:
 
 ```hocon
 keyspaces-cdc-streams {

@@ -358,7 +358,7 @@ public class KeyspacesConfig {
 
     public ITargetMapper getTargetMapper() {
 
-        Config conf = ConfigFactory.load("application.conf");
+        Config conf = ConfigFactory.load(configPath);
 
         return buildFromConfig(conf,
             null,

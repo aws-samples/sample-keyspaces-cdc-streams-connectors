@@ -80,7 +80,9 @@ public class KCLScheduler {
 
     public void startScheduler(Scheduler scheduler) {
         this.scheduler = scheduler;
+
         schedulerThread = new Thread(() -> scheduler.run());
+        
         schedulerThread.start();
     }
 

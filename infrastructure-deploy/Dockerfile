@@ -49,7 +49,7 @@ COPY --from=builder /app/s3-bucket-connector/target/s3-bucket-connector-1.0.0.ja
 COPY --from=builder /app/s3-vector-connector/target/s3-vector-connector-1.0.0.jar ./app.jar
 
 # Copy configuration files
-COPY --from=builder /app/kcl-keyspaces-app/src/main/resources/application.conf ./application.conf
+COPY --from=builder /app/kcl-keyspaces-app/src/main/resources/stream-application.conf ./stream-application.conf
 COPY --from=builder /app/kcl-keyspaces-app/src/main/resources/logback.xml ./logback.xml
 
 ADD https://certs.secureserver.net/repository/sf-class2-root.crt ./sf-class2-root.crt

@@ -1,6 +1,6 @@
 # Keyspaces CDC Streams Connectors
 
-Move data from Amazon Keyspaces to different downstream targets using Keyspaces CDC Streams connectors. This library will allow you to deploy a Kinesis Client Library (KCL)-based application to stream data from your Keyspaces. The goal is to simplify connecting data sources to different targets. Different connectors can be added by extending the ITargetMapper interface. Configuration properties can be exposed in the application.conf or environment variables.  
+Move data from Amazon Keyspaces to different downstream targets using Keyspaces CDC Streams connectors. This library will allow you to deploy a Kinesis Client Library (KCL)-based application to stream data from your Keyspaces. The goal is to simplify connecting data sources to different targets. Different connectors can be added by extending the ITargetMapper interface. Configuration properties can be exposed in the stream-application.conf or environment variables.  
 
 ## Currently Available Connectors
 
@@ -31,11 +31,11 @@ Docker file and deployment information can be found in [infrastructure-deploy](i
 
 ## Configuration
 
-The application can be configured using either `application.conf` file or environment variables. Environment variables take precedence over configuration file values. 
+The application can be configured using either `stream-application.conf` file or environment variables. Environment variables take precedence over configuration file values. 
 
-### application.conf
+### stream-application.conf
 
-The main configuration file is located at `kcl-keyspaces-app/src/main/resources/application.conf`. Here's the complete configuration structure:
+The main configuration file is located at `kcl-keyspaces-app/src/main/resources/stream-application.conf`. Here's the complete configuration structure:
 
 ```hocon
 keyspaces-cdc-streams {

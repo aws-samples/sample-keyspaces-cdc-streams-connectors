@@ -89,7 +89,7 @@ public class S3TargetMapper implements ITargetMapper {
                 time.append(String.format("%04d/", LocalDateTime.now().getYear()));
                 break;
             default:
-                logger.error("No timestamp partition selected: " + timestampPartition);
+                logger.info("No timestamp partition selected: " + timestampPartition);
         }
 
         StringBuilder partitionBuilder = new StringBuilder();

@@ -34,7 +34,7 @@ You can use this library in the Keyspaces Connector project by including the dep
 
 ## Configuration
 
-Configure the connector in your `application.conf` file:
+Configure the connector in your `stream-application.conf` file:
 
 ```hocon
 keyspaces-cdc-streams {

@@ -17,12 +17,18 @@ public class KCLMainRunner {
     private static final Logger logger = LoggerFactory.getLogger(KCLMainRunner.class);
     public static void main(String[] args) {
 
+        String applicationConfLocation = "streams-application.conf";
+
         Map<String, String> env = System.getenv();
         for (String envName : env.keySet()) {
             System.out.format("%s=%s%n", envName, env.get(envName));
         }
+        
+        if(env.get("APPLICATION_CONF_LOCATION") != null){
+            applicationConfLocation = env.get("APPLICATION_CONF_LOCATION");
+        }
 
-        KeyspacesConfig keyspacesConfig = new KeyspacesConfig("application.conf");
+        KeyspacesConfig keyspacesConfig = new KeyspacesConfig(applicationConfLocation);
         
         KCLScheduler kclTestBase = new KCLScheduler(keyspacesConfig);
 
@@ -31,6 +37,7 @@ public class KCLMainRunner {
         Scheduler scheduler = kclTestBase.createScheduler(workerId);
 
         logger.info("created scheduler for Worker - {}", workerId);
+
 
         AtomicReference schedulerRef = new AtomicReference<>(scheduler);
         
