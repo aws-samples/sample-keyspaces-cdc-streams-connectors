@@ -22,7 +22,7 @@ The following script will build this project and move the container image to ECR
 
 ### 2. Configure Parameters
 
-The parameters file will allow you to set paramters for cloudformation template. Not all of the options for the Keyspaces connector are exposed in the cloudformation template. To add more paramters you will need to add environment varriable to the ECS task definition. Any option in the Keyspaces connector project stream-application.conf can be overridden with an envrionment varriable. 
+The parameters file will allow you to set paramters for cloudformation template. Not all of the options for the Keyspaces connector are exposed in the cloudformation template. To add more paramters you will need to add environment varriable to the ECS task definition. Any option in the Keyspaces connector project streams-application.conf can be overridden with an envrionment varriable. 
 
 Edit the `parameters.json` file to configure your deployment:
 

@@ -31,7 +31,7 @@ The application follows a modular architecture:
 - **Health Monitoring**: HTTP health check endpoint on port 8080
 - **Graceful Shutdown**: Proper cleanup on SIGTERM/SIGINT signals
 - **Worker Management**: Automatic worker ID generation and management
-- **Configuration Management**: Flexible configuration via `stream-application.conf` and environment variables
+- **Configuration Management**: Flexible configuration via `streams-application.conf` and environment variables
 - **Logging**: Comprehensive logging with SLF4J and Logback
 
 ## Prerequisites

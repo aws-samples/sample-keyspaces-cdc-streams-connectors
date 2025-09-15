@@ -23,6 +23,7 @@ public class AWSHelpers {
             .region(Region.AWS_GLOBAL)
             .credentialsProvider(DefaultCredentialsProvider.builder().build())
             .build()) {
+              
         GetCallerIdentityResponse id = sts.getCallerIdentity();
         
         String arn = id.arn(); // arn:aws:sts::<acct>:assumed-role/<role-name>/<session-name>

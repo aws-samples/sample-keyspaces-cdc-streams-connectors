@@ -1,5 +1,6 @@
 package software.amazon.ssa.streams.config;
 
+import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
@@ -13,6 +14,7 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 
 import edu.umd.cs.findbugs.annotations.Nullable;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.keyspacesstreams.model.Stream;
 import software.amazon.ssa.streams.connector.ITargetMapper;
@@ -154,7 +156,10 @@ public class KeyspacesConfig {
     
     public synchronized KeyspacesStreamsClient getOrCreateKeyspacesStreamsClient() {
         if (keyspacesStreamsClient == null) {
+
+            logger.info("Creating KeyspacesStreamsClient for region: {}", region);
             keyspacesStreamsClient = KeyspacesStreamsClient.builder()
+            .credentialsProvider(DefaultCredentialsProvider.builder().build())
             .region(Region.of(region))
             .build();
         }
@@ -182,6 +187,8 @@ public class KeyspacesConfig {
                .listStreams(listStreamsRequest);
             
             for (Stream stream : listStreamsResponse.streams()) {
+
+                logger.info("Stream: {}", stream.streamArn());
                 if(streamName  != null && !streamName.isEmpty()) {
                     if (stream.keyspaceName().equalsIgnoreCase(keyspaceName) && stream.tableName().equalsIgnoreCase(tableName) 
                     && stream.streamLabel().equalsIgnoreCase(streamName)) {
@@ -214,6 +221,7 @@ public class KeyspacesConfig {
     public static String getConfigValue(Config conf, String configPath, String defaultValue, boolean isRequired) {
         // Convert config path to environment variable name
         String envVarName = convertToEnvVarName(configPath);
+        
         String envValue = System.getenv(envVarName);
         
         if (envValue != null) {
@@ -333,7 +341,7 @@ public class KeyspacesConfig {
      */
     private void initializeConfig() {
        
-        Config conf = ConfigFactory.load(configPath);
+        Config conf = ConfigFactory.parseFile(new File(configPath));
 
         keyspaceName = getConfigValue(conf, "keyspaces-cdc-streams.stream.keyspace-name", "", false);
         tableName = getConfigValue(conf, "keyspaces-cdc-streams.stream.table-name", "", false);
@@ -358,7 +366,7 @@ public class KeyspacesConfig {
 
     public ITargetMapper getTargetMapper() {
 
-        Config conf = ConfigFactory.load(configPath);
+        Config conf = ConfigFactory.parseFile(new File(configPath));
 
         return buildFromConfig(conf,
             null,
@@ -370,7 +378,7 @@ public class KeyspacesConfig {
                 new IllegalArgumentException(
                     String.format(
                         "Missing default targer mapper, check your configuration (%s)",
-                        "software.amazon.ssa.streams.connector.target.DefaultKeyspacesTargetMapper")));
+                        "software.amazon.ssa.streams.connector.DefaultKeyspacesTargetMapper")));
   }
     
     

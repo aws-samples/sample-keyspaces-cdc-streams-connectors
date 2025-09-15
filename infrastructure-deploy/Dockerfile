@@ -29,24 +29,29 @@ COPY s3-vector-connector/src ./s3-vector-connector/src
 RUN mvn clean package -DskipTests
 
 # Runtime stage
-FROM openjdk:11-jre-slim
+FROM amazoncorretto:11-alpine
 
 # Install necessary packages for AWS ECS
-RUN apt-get update && apt-get install -y \
+RUN apk add --no-cache \
     curl \
     ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/cache/apk/*
 
 # Create app user for security
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+RUN addgroup -g 1000 appuser && adduser -D -s /bin/sh -u 1000 -G appuser appuser
 
 # Set working directory
 WORKDIR /app
 
+# Create lib directory for dependencies
+RUN mkdir -p lib
+
 # Copy the built JAR from builder stage
 COPY --from=builder /app/kcl-keyspaces-app/target/kcl-keyspaces-app-1.0.0.jar ./app.jar
-COPY --from=builder /app/s3-bucket-connector/target/s3-bucket-connector-1.0.0.jar ./app.jar
-COPY --from=builder /app/s3-vector-connector/target/s3-vector-connector-1.0.0.jar ./app.jar
+# Copy connector JARs to lib directory for runtime dependencies
+COPY --from=builder /app/s3-bucket-connector/target/s3-bucket-connector-1.0.0.jar ./lib/
+COPY --from=builder /app/s3-vector-connector/target/s3-vector-connector-1.0.0.jar ./lib/
+COPY --from=builder /app/kcl-keyspaces-core/target/kcl-keyspaces-core-1.0.0.jar ./lib/
 
 # Copy configuration files
 COPY --from=builder /app/kcl-keyspaces-app/src/main/resources/streams-application.conf ./streams-application.conf
@@ -56,6 +61,7 @@ ADD https://certs.secureserver.net/repository/sf-class2-root.crt ./sf-class2-roo
 
 # Change ownership to app user
 RUN chown -R appuser:appuser /app
+
 
 # Switch to app user
 USER appuser
@@ -70,5 +76,7 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
+ENV APPLICATION_CONF_LOCATION="/app/streams-application.conf"
+
 # Set the entrypoint
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS --add-opens java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED --add-opens java.base/sun.nio.ch=org.apache.arrow.memory.core,ALL-UNNAMED -jar app.jar"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -cp \".:lib/*\" --add-opens java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED --add-opens java.base/sun.nio.ch=org.apache.arrow.memory.core,ALL-UNNAMED -jar app.jar"]
