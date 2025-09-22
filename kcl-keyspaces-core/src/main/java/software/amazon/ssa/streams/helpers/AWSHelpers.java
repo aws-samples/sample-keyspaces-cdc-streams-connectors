@@ -29,7 +29,7 @@ public class AWSHelpers {
         String arn = id.arn(); // arn:aws:sts::<acct>:assumed-role/<role-name>/<session-name>
         // Try to extract the role session-name for a compact ID
         String sess = extractSessionName(arn);
-        return sess != null ? "sts:" + shortId(sess) : "sts:" + shortId(arn);
+        return sess != null ? "sts:" + shortId(sess) +  "-" + System.currentTimeMillis() : "sts:" + shortId(arn) + "-" + System.currentTimeMillis();
         } catch (SdkClientException e) {
             logger.error("Error getting caller identity", e);
         // ignore and fall through

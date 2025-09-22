@@ -26,6 +26,7 @@ from datetime import datetime
 import os
 import ssl
 import sys
+import time
 
 # AWS and Cassandra imports
 import boto3
@@ -39,8 +40,8 @@ from cassandra.concurrent import execute_concurrent_with_args
 from cassandra.policies import RetryPolicy
 
 # Configuration constants
-KEYSPACE = "movies"  # Amazon Keyspaces keyspace name
-TABLE = "titles"        # Table name for movie data
+KEYSPACE = "media"  # Amazon Keyspaces keyspace name
+TABLE = "movies"        # Table name for movie data
 CONCURRENCY = 5         # Number of concurrent insert operations. Too many concurrent operations on a new table can result in throttling.
 
 class KeyspacesRetryPolicy(RetryPolicy):
@@ -114,6 +115,7 @@ if not region:
 
 # Set up authentication provider for Amazon Keyspaces
 auth_provider = SigV4AuthProvider(boto_session)
+
 contact_point = "cassandra.{}.amazonaws.com".format(region)
 
 # Configure execution profile with retry policy and consistency level
@@ -132,6 +134,78 @@ cluster = Cluster([contact_point],
 # Establish session connection
 session = cluster.connect()
 print("CONNECTION TO KEYSPACES SUCCESSFUL")
+
+# =============================================================================
+# SCHEMA SETUP
+# =============================================================================
+
+print("Setting up keyspace and table schema...")
+
+# Create keyspace if it doesn't exist
+session.execute(f"""
+    CREATE KEYSPACE IF NOT EXISTS {KEYSPACE} 
+    WITH replication = {{'class':'SingleRegionStrategy'}}
+""")
+print(f"Keyspace '{KEYSPACE}' created or already exists")
+
+# Wait for keyspace to be fully available before creating table
+print("Waiting for keyspace to be fully available...")
+time.sleep(3)
+
+# Create table with CDC enabled for streaming
+session.execute(f"""
+    CREATE TABLE IF NOT EXISTS {KEYSPACE}.{TABLE} (
+        title text,
+        overview text,
+        original_lang text,
+        rel_date date,
+        popularity decimal,
+        vote_count int,
+        vote_average decimal,
+        PRIMARY KEY (title)
+    ) WITH cdc = true
+    AND CUSTOM_PROPERTIES = {{
+      'cdc_specification': {{'view_type':'NEW_AND_OLD_IMAGES'}}
+    }}
+""")
+
+
+print(f"Table '{KEYSPACE}.{TABLE}' created or already exists with CDC enabled")
+
+# Wait for table to become active (up to 60 seconds)
+print("Waiting for table to become active...")
+max_wait_time = 120  # Maximum wait time in seconds
+wait_interval = 1   # Check every 2 seconds
+elapsed_time = 0
+
+while elapsed_time < max_wait_time:
+    try:
+        # Query system_schema_mcs.tables to check table status
+        result = session.execute(f"""
+            SELECT status FROM system_schema_mcs.tables 
+            WHERE keyspace_name = '{KEYSPACE}' AND table_name = '{TABLE}'
+        """)
+        
+        # Check if we got a result and if the status is 'ACTIVE'
+        row = result.one()
+        if row and row.status == 'ACTIVE':
+            print(f"Table '{KEYSPACE}.{TABLE}' is now ACTIVE")
+            break
+        elif row:
+            print(f"Table status: {row.status}, waiting... ({elapsed_time}s elapsed)")
+        else:
+            print(f"Table not found in system schema, waiting... ({elapsed_time}s elapsed)")
+            
+    except Exception as e:
+        print(f"Error checking table status: {e}, waiting... ({elapsed_time}s elapsed)")
+    
+    time.sleep(wait_interval)
+    elapsed_time += wait_interval
+
+if elapsed_time >= max_wait_time:
+    print(f"Warning: Table did not become active within {max_wait_time} seconds")
+else:
+    print("Table is ready for data insertion")
 
 # =============================================================================
 # CSV DATA LOADING AND PROCESSING
@@ -164,7 +238,7 @@ with open("movies_list.csv", newline="", encoding="utf-8") as csvfile:
 print(f"Successfully loaded {len(rows)} valid movie records from CSV")
 
 # =============================================================================
-# CONCURRENT DATA INSERTION
+# SEQUENTIAL DATA INSERTION (1 record per second)
 # =============================================================================
 
 # Prepare the INSERT statement for optimal performance
@@ -174,36 +248,56 @@ insert_cql = f"""
 """
 prepared = session.prepare(insert_cql)
 
-# Prepare parameters for concurrent execution
-# Convert each row to a tuple of parameters for the prepared statement
-parameters = []
-for r in rows:
-    parameters.append((
-        r["title"],         # Primary key: Movie title
-        r["overview"],      # Movie description
-        r["original_lang"], # Language code
-        r["rel_date"],      # Release date
-        r["popularity"],    # Popularity score
-        r["vote_count"],    # Number of votes
-        r["vote_average"],  # Average rating
-    ))
+print(f"Starting sequential insert of {len(rows)} rows at 1 record per second...")
+print("This will take approximately {:.1f} minutes to complete".format(len(rows) / 60.0))
 
-print(f"Starting concurrent insert of {len(parameters)} rows with {CONCURRENCY} concurrent operations...")
+successful = 0
+failed = 0
+start_time = time.time()
 
-# Execute all inserts concurrently using execute_concurrent_with_args
-# This provides better performance than batching for individual row inserts
-results = execute_concurrent_with_args(
-    session, 
-    prepared, 
-    parameters, 
-    concurrency=CONCURRENCY  # Number of parallel operations
-)
+# Process each row sequentially with 1-second delay
+for i, row in enumerate(rows, 1):
+    try:
+        # Execute single insert
+        session.execute(prepared, (
+            row["title"],         # Primary key: Movie title
+            row["overview"],      # Movie description
+            row["original_lang"], # Language code
+            row["rel_date"],      # Release date
+            row["popularity"],    # Popularity score
+            row["vote_count"],    # Number of votes
+            row["vote_average"],  # Average rating
+        ))
+        
+        successful += 1
+        
+        # Progress reporting every 10 records
+        if i % 10 == 0:
+            elapsed_time = time.time() - start_time
+            rate = i / elapsed_time if elapsed_time > 0 else 0
+            eta_seconds = (len(rows) - i) / rate if rate > 0 else 0
+            eta_minutes = eta_seconds / 60
+            
+            print(f"Progress: {i}/{len(rows)} records ({i/len(rows)*100:.1f}%) - "
+                  f"Rate: {rate:.2f} records/sec - ETA: {eta_minutes:.1f} minutes")
+        
+        # Wait 1 second before next insert (except for the last record)
+        if i < len(rows):
+            time.sleep(1)
+            
+    except Exception as e:
+        failed += 1
+        print(f"Error inserting record {i} ({row['title']}): {e}")
+        
+        # Still wait 1 second even on error to maintain rate
+        if i < len(rows):
+            time.sleep(1)
 
-# Analyze results and count successful vs failed operations
-successful = sum(1 for (success, result) in results if success)
-failed = len(results) - successful
-
-print(f"Insert completed: {successful} successful, {failed} failed")
+total_time = time.time() - start_time
+print(f"\nInsert completed in {total_time:.1f} seconds:")
+print(f"  - Successful: {successful}")
+print(f"  - Failed: {failed}")
+print(f"  - Average rate: {successful/total_time:.2f} records/second")
 
 # =============================================================================
 # DATA VERIFICATION AND CLEANUP

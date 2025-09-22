@@ -1,5 +1,6 @@
 package software.amazon.ssa.streams.helpers;
 
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
@@ -126,6 +127,7 @@ public class StreamHelpers {
             case "varchart":
             case "asciit":
             case "inett":
+            case "datet":
                 return String.class;
                 
             // Integer types
@@ -142,6 +144,9 @@ public class StreamHelpers {
             // Floating point types
             case "floatt":
                 return Float.class;
+
+            case "decimalt":
+                return BigDecimal.class;
                 
             case "doublet":
                 return Double.class;

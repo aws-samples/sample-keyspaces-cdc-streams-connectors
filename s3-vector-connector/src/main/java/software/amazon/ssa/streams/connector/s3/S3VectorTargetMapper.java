@@ -100,7 +100,25 @@ public class S3VectorTargetMapper implements ITargetMapper {
                 if(entry.getKey().equals(embeddingField)){
                     if(javaType == String.class){
                         String text = entry.getValue().value().textT();
-                        List<Float> asFloat32 = vectorHelper.writeRecordsToVectors(text, dimensions);
+
+                        if(text == null || text.isEmpty()){
+                            logger.warn("record with empty embedding field: {}", record.getRecord().newImage().toString());
+                            String key = record.getRecord().newImage().valueCells().get(keyField).value().textT();
+                               
+                            if(key != null && !key.isEmpty()){
+                                text = key;
+                               
+                                logger.warn("rusing key field: {}", key);
+
+                            } else {
+                                logger.warn("record with empty embedding field: {} and no key field", record.getRecord().newImage().toString());
+                           
+                                throw new IllegalArgumentException("No descrption or key field found for recond " + record.getRecord().newImage().toString());
+                            }
+                        }
+                        
+
+                        List<Float> asFloat32 = vectorHelper.writeRecordsToVectors(text, dimensions, maxRetries);
                         putInputVectorBuilder.data(VectorData.builder().float32(asFloat32).build());
                     } else {
                         throw new IllegalArgumentException("Unsupported CQL type for vector index embedding: " + cellType);
@@ -151,6 +169,7 @@ public class S3VectorTargetMapper implements ITargetMapper {
                     .build();
                 
                 S3VectorsClient s3VectorsClient = getOrCreateS3VectorsClient();
+                
                 PutVectorsResponse resp = s3VectorsClient.putVectors(putReq);
                 
                 success = true;
@@ -158,7 +177,7 @@ public class S3VectorTargetMapper implements ITargetMapper {
             } catch (Exception s3Error) {
                 logger.warn("S3Vector write attempt {} failed: {}", attempt, s3Error.getMessage());
                 if (attempt < maxRetries-1) {
-                    Thread.sleep(10 * attempt); // Exponential backoff
+                    Thread.sleep(100 * attempt); // Exponential backoff
                 } else {
                     throw s3Error;
                 }

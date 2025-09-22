@@ -20,17 +20,13 @@ The `movies_list.csv` file contains 9,282 movie records with the following struc
 
 ### Create Keyspace
 ```cql
-CREATE KEYSPACE IF NOT EXISTS movies
-WITH REPLICATION = {
-    'class': 'SimpleStrategy',
-    'replication_factor': 3
-};
+CREATE KEYSPACE media WITH replication = {'class':'SingleRegionStrategy'};
 ```
 
 ### Create Table
 ```cql
 
-CREATE TABLE IF NOT EXISTS movies.movies (
+CREATE TABLE IF NOT EXISTS media.movies (
     title text,
     overview text,
     original_lang text,
@@ -38,8 +34,11 @@ CREATE TABLE IF NOT EXISTS movies.movies (
     popularity decimal,
     vote_count int,
     vote_average decimal,
-    PRIMARY KEY (title, rel_date)
-);
+    PRIMARY KEY (title)
+) WITH cdc = true
+AND CUSTOM_PROPERTIES = {
+  'cdc_specification': {'view_type':'NEW_AND_OLD_IMAGES'}
+};
 ```
 
 ## Sample Data Insert Statements
