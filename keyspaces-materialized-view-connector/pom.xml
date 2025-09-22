@@ -11,36 +11,31 @@
         <version>1.0.0</version>
     </parent>
 
-    <artifactId>kcl-keyspaces-app</artifactId>
+    <artifactId>keyspaces-materialized-view-connector</artifactId>
     <packaging>jar</packaging>
 
-    <name>KCL Keyspaces app</name>
-    <description>Example applications using KCL Keyspaces connector</description>
+    <name>Keyspsaces Materialized View Connector</name>
+    <description>Keyspaces Materialized View connector for Amazon Keyspaces CDC streams</description>
 
     <dependencies>
-        <!-- Core module dependency -->
+        <!-- Core KCL Keyspaces dependency -->
         <dependency>
             <groupId>software.amazon.ssa</groupId>
             <artifactId>kcl-keyspaces-core</artifactId>
-            <version>${project.version}</version>
+            <version>1.0.0</version>
         </dependency>
 
-         <dependency>
-            <groupId>software.amazon.ssa</groupId>
-            <artifactId>s3-vector-connector</artifactId>
-            <version>${project.version}</version>
-        </dependency>
         <dependency>
-            <groupId>software.amazon.ssa</groupId>
-            <artifactId>s3-bucket-connector</artifactId>
-            <version>${project.version}</version>
+            <groupId>com.datastax.oss</groupId>
+            <artifactId>java-driver-core</artifactId>
+            <version>4.17.0</version>
         </dependency>
+
         <dependency>
-            <groupId>software.amazon.ssa</groupId>
-            <artifactId>keyspaces-materialized-view-connector</artifactId>
-            <version>${project.version}</version>
+            <groupId>software.aws.mcs</groupId>
+            <artifactId>aws-sigv4-auth-cassandra-java-driver-plugin</artifactId>
+            <version>4.0.9</version>
         </dependency>
-      
 
         <!-- Logging -->
         <dependency>
@@ -91,7 +86,7 @@
                         <configuration>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>software.amazon.ssa.streams.connector.KCLMainRunner</mainClass>
+                                    <mainClass>software.amazon.ssa.streams.connector.KeyspacesViewTargetMapper</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>
@@ -102,20 +97,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-            </plugin>
-
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <configuration>
-                    <mainClass>software.amazon.ssa.streams.connector.KCLMainRunner</mainClass>
-                    <execArgs>
-                        <execArg>--add-opens</execArg>
-                        <execArg>java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED</execArg>
-                        <execArg>--add-opens</execArg>
-                        <execArg>java.base/sun.nio.ch=org.apache.arrow.memory.core,ALL-UNNAMED</execArg>
-                    </execArgs>
-                </configuration>
             </plugin>
         </plugins>
     </build>

@@ -169,6 +169,22 @@ session.execute(f"""
     }}
 """)
 
+session.execute(f"""
+    CREATE TABLE IF NOT EXISTS {KEYSPACE}.{TABLE}_by_date_v2 (
+        title text,
+        overview text,
+        original_lang text,
+        rel_date date,
+        popularity decimal,
+        vote_count int,
+        vote_average decimal,
+        PRIMARY KEY (rel_date, title)
+    ) WITH cdc = true
+    AND CUSTOM_PROPERTIES = {{
+      'cdc_specification': {{'view_type':'NEW_AND_OLD_IMAGES'}}
+    }}
+""")
+
 
 print(f"Table '{KEYSPACE}.{TABLE}' created or already exists with CDC enabled")
 

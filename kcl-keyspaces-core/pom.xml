@@ -20,7 +20,7 @@
     <dependencies>
         
         
-        
+      
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>bedrockruntime</artifactId>

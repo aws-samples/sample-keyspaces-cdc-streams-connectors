@@ -16,6 +16,11 @@ Move data from Amazon Keyspaces to different downstream targets using Keyspaces 
 - Support for metadata fields
 - [Detailed Documentation](s3-vector-connector/README.md) 
 
+### Amazon Keyspaces Materialized View (`keyspaces-materialized-view`)
+- Connector to create a materialized view in Amazon Keyspaces
+- Select fields to move
+- [Detailed Documentation](keyspaces-materialized-view-connector/README.md) 
+
 ## Architecture
 
 This project implements a streaming architecture that processes Amazon Keyspaces CDC events and stores them in S3. 

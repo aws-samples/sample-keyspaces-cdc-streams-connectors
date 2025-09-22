@@ -18,6 +18,7 @@
         <module>kcl-keyspaces-app</module>
         <module>s3-bucket-connector</module>
         <module>s3-vector-connector</module>
+        <module>keyspaces-materialized-view-connector</module>
     </modules>
 
     <properties>

@@ -16,6 +16,7 @@ COPY  kcl-keyspaces-core/pom.xml ./kcl-keyspaces-core/
 COPY  kcl-keyspaces-app/pom.xml ./kcl-keyspaces-app/
 COPY  s3-bucket-connector/pom.xml ./s3-bucket-connector/
 COPY  s3-vector-connector/pom.xml ./s3-vector-connector/
+COPY  keyspaces-materialized-view-connector/pom.xml ./keyspaces-materialized-view-connector/
 # Download dependencies (this layer will be cached if pom files don't change)
 RUN mvn dependency:go-offline -B
 
@@ -24,6 +25,7 @@ COPY kcl-keyspaces-core/src ./kcl-keyspaces-core/src
 COPY kcl-keyspaces-app/src ./kcl-keyspaces-app/src
 COPY s3-bucket-connector/src ./s3-bucket-connector/src
 COPY s3-vector-connector/src ./s3-vector-connector/src
+COPY keyspaces-materialized-view-connector/src ./keyspaces-materialized-view-connector/src
 
 # Build the application with shade plugin to create fat JAR
 RUN mvn clean package -DskipTests
@@ -52,9 +54,11 @@ COPY --from=builder /app/kcl-keyspaces-app/target/kcl-keyspaces-app-1.0.0.jar ./
 COPY --from=builder /app/s3-bucket-connector/target/s3-bucket-connector-1.0.0.jar ./lib/
 COPY --from=builder /app/s3-vector-connector/target/s3-vector-connector-1.0.0.jar ./lib/
 COPY --from=builder /app/kcl-keyspaces-core/target/kcl-keyspaces-core-1.0.0.jar ./lib/
+COPY --from=builder /app/keyspaces-materialized-view-connector/target/keyspaces-materialized-view-connector-1.0.0.jar ./lib/
 
 # Copy configuration files
 COPY --from=builder /app/kcl-keyspaces-app/src/main/resources/streams-application.conf ./streams-application.conf
+COPY --from=builder /app/keyspaces-materialized-view-connector/src/main/resources/keyspaces-application.conf ./keyspaces-application.conf
 COPY --from=builder /app/kcl-keyspaces-app/src/main/resources/logback.xml ./logback.xml
 
 ADD https://certs.secureserver.net/repository/sf-class2-root.crt ./sf-class2-root.crt

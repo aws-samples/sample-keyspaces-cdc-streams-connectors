@@ -8,6 +8,9 @@ import software.amazon.awssdk.services.keyspacesstreams.model.KeyspacesCell;
 import software.amazon.awssdk.services.keyspacesstreams.model.KeyspacesCellValue;
 import software.amazon.awssdk.services.keyspacesstreams.model.KeyspacesRow;
 import software.amazon.awssdk.services.keyspacesstreams.model.OriginType;
+import java.time.LocalDate;
+
+
 
 import software.amazon.awssdk.services.keyspacesstreams.model.KeyspacesCellValue.Type;
 
@@ -73,35 +76,37 @@ public class StreamHelpers {
         
         switch (cqlType) {
             case "textt":
-            case "varchart":
-            case "asciit":
-            case "inett":
                 return value.textT();
-                
+            case "varchart":
+                return value.varcharT();
+            case "asciit":
+                return value.asciiT();
+            case "inett":
+                return value.inetT();
+            case "datet":
+                return LocalDate.parse(value.dateT());
             case "intt":
-            case "smallintt":
-            case "tinyintt":
                 return Integer.parseInt(value.intT());
-                
+            case "smallintt":
+                return Integer.parseInt(value.smallintT());
+            case "tinyintt":
+                return Integer.parseInt(value.tinyintT());
             case "bigintt":
-            case "countert":
                 return Long.parseLong(value.bigintT());
-                
+            case "countert":
+                return Long.parseLong(value.counterT());
             case "floatt":
                 return Float.parseFloat(value.floatT());
-                
+            case "decimalt":
+                return new BigDecimal(value.decimalT());
             case "doublet":
                 return Double.parseDouble(value.doubleT());
-                
             case "booleant":
                 return value.boolT();
-                
             case "timestampt":
                 return value.timestampT();
-                
             case "blobt":
                 return value.blobT().asByteArray();
-                
             default:
                 // Return as string for unknown types
                 throw new IllegalArgumentException("Unsupported CQL type: " + cqlType);
