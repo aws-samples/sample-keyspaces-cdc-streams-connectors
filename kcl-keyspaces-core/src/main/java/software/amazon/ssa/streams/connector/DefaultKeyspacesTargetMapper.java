@@ -40,7 +40,6 @@ public class DefaultKeyspacesTargetMapper implements ITargetMapper {
           record.toString();
             String json = mapper.writeValueAsString(record);
             logger.info("Keyspaces CDC Record: {}", json);
-       
        }
     }
 }

@@ -45,6 +45,7 @@ public class KeyspacesViewTargetMapper implements ITargetMapper {
     private int maxRetries;
     private List<String> partitionKeys;
     private List<String> clusteringKeys;
+    private KeyspacesConfig keyspacesConfig;
    
     public KeyspacesViewTargetMapper(Config config) {
         this.keyspaceName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.keyspace-name", "", true);
@@ -67,7 +68,8 @@ public class KeyspacesViewTargetMapper implements ITargetMapper {
     }
     @Override
     public void initialize(KeyspacesConfig keyspacesConfig) {
-
+        this.keyspacesConfig = keyspacesConfig;
+        
         DriverConfigLoader driverConfigLoader = DriverConfigLoader.fromClasspath(driverConfig);
         this.session = CqlSession.builder()
             .withConfigLoader(driverConfigLoader)

@@ -47,6 +47,7 @@ public class S3TargetMapper implements ITargetMapper {
     private String format;
     private String timestampPartition;
     private int maxRetries;
+    private KeyspacesConfig keyspacesConfig;
    
     public S3TargetMapper(Config config) {
         this.bucketName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.bucket-id", "", true);
@@ -60,6 +61,7 @@ public class S3TargetMapper implements ITargetMapper {
 
     @Override
     public void initialize(KeyspacesConfig keyspacesConfig) {
+        this.keyspacesConfig = keyspacesConfig;
         logger.info("Initializing S3TargetMapper with bucket: {} and prefix: {}", bucketName, prefix);
     }
 

@@ -16,10 +16,15 @@ Move data from Amazon Keyspaces to different downstream targets using Keyspaces 
 - Support for metadata fields
 - [Detailed Documentation](s3-vector-connector/README.md) 
 
-### Amazon Keyspaces Materialized View (`keyspaces-materialized-view`)
+### Amazon Keyspaces Materialized View connector (`keyspaces-materialized-view`)
 - Connector to create a materialized view in Amazon Keyspaces
 - Select fields to move
 - [Detailed Documentation](keyspaces-materialized-view-connector/README.md) 
+
+## SQS Connector ('sqs-connector')
+- Connector to push changes to sqs
+- Select fields to move
+- [Detailed Documentation](sqs-connector/README.md) 
 
 ## Architecture
 

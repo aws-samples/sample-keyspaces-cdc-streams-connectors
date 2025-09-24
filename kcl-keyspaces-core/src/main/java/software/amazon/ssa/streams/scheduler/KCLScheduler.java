@@ -57,7 +57,7 @@ public class KCLScheduler {
         ITargetMapper targetMapper = keyspacesConfig.getTargetMapper();
 
         
-        recordProcessorFactory = new KeyspacesRecordProcessorFactory(targetMapper);
+        recordProcessorFactory = new KeyspacesRecordProcessorFactory(targetMapper, keyspacesConfig);
     
 
         streamsClient = KeyspacesStreamsClient.builder()

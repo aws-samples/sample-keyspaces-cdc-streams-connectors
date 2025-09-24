@@ -86,7 +86,6 @@ public class KCLMainRunner {
 
         logger.info("created scheduler for Worker - {}", workerId);
 
-
         AtomicReference schedulerRef = new AtomicReference<>(scheduler);
         
         logger.info("starting scheduler for Worker - {}", workerId);

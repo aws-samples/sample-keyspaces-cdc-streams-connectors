@@ -60,6 +60,7 @@ public class S3VectorTargetMapper implements ITargetMapper {
     private VectorHelper vectorHelper;
     private int dimensions;
     private S3VectorsClient s3VectorsClient;
+    private KeyspacesConfig keyspacesConfig;
    
     public S3VectorTargetMapper(Config config) {
         this.bucketName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.bucket-id", "", true);
@@ -77,6 +78,7 @@ public class S3VectorTargetMapper implements ITargetMapper {
 
     @Override
     public void initialize(KeyspacesConfig keyspacesConfig) {
+        this.keyspacesConfig = keyspacesConfig;
         logger.info("Initializing S3VectorTargetMapper with bucket: {} and index: {}", bucketName, indexName);
     }
 

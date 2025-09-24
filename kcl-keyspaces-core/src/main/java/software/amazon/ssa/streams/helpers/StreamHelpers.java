@@ -19,7 +19,7 @@ import software.amazon.awssdk.services.keyspacesstreams.model.Record;
 
 public class StreamHelpers {
     
-    public static StreamProcessorOperationType getOperationType(Record record) throws Exception {
+    public static StreamProcessorOperationType getOperationType(Record record) {
  
         OriginType originType = record.origin();
         
@@ -29,32 +29,31 @@ public class StreamHelpers {
 
         StreamProcessorOperationType operation_type = StreamProcessorOperationType.UNKNOWN;
 
-        if(originType==OriginType.TTL){
+        if(originType != null && originType==OriginType.TTL){
             operation_type = StreamProcessorOperationType.TTL;
-        }else if(newImage == null){
-            if (originType==OriginType.REPLICATION){
+        }else if(oldImage != null && newImage == null){
+            if (originType != null && originType==OriginType.REPLICATION){
                 operation_type = StreamProcessorOperationType.REPLICATED_DELETE;
-            }else if (originType==OriginType.USER) {
+            }else if (originType != null && originType==OriginType.USER) {
                 operation_type = StreamProcessorOperationType.DELETE;
             }else {
-                
-                throw new Exception("new image is null. Unsupported origin type: " + originType);
+                operation_type = StreamProcessorOperationType.UNKNOWN;
             }
-        }else if (oldImage == null){
-            if (originType==OriginType.REPLICATION){
+        }else if (oldImage == null && newImage != null){
+            if (originType != null && originType==OriginType.REPLICATION){
                 operation_type = StreamProcessorOperationType.REPLICATED_INSERT;
-            }else if (originType==OriginType.USER) {
+            }else if (originType != null && originType==OriginType.USER) {
                 operation_type = StreamProcessorOperationType.INSERT;
             } else {
-                    throw new Exception("old image is null. Unsupported origin type: " + originType);
+                operation_type = StreamProcessorOperationType.UNKNOWN;
             }
         }else {
-            if (originType==OriginType.REPLICATION){
+            if (originType != null && originType==OriginType.REPLICATION){
                 operation_type = StreamProcessorOperationType.REPLICATED_UPDATE;
-            }else if (originType==OriginType.USER) {
+            }else if (originType != null && originType==OriginType.USER) {
                 operation_type = StreamProcessorOperationType.UPDATE;
             }else {
-                throw new Exception("new image and old image are not null. Unsupported origin type: " + originType);
+                operation_type = StreamProcessorOperationType.UNKNOWN;
             }
         }
         return operation_type;
@@ -193,6 +192,10 @@ public class StreamHelpers {
         public static StreamProcessorOperationType fromString(String operationType) {
             
             return StreamProcessorOperationType.valueOf(operationType.toUpperCase());
+        }
+
+        public String toString() {
+            return value;
         }
     }
 }

@@ -7,6 +7,7 @@ import software.amazon.kinesis.lifecycle.events.LeaseLostInput;
 import software.amazon.kinesis.lifecycle.events.ShardEndedInput;
 import software.amazon.kinesis.lifecycle.events.ShutdownRequestedInput;
 import software.amazon.kinesis.processor.RecordProcessorCheckpointer;
+import software.amazon.ssa.streams.config.KeyspacesConfig;
 import software.amazon.ssa.streams.connector.ITargetMapper;
 
 import org.slf4j.Logger;
@@ -18,14 +19,18 @@ public class KeyspacesRecordProcessor implements KeyspacesStreamsShardRecordProc
     private String shardId;
     
     ITargetMapper targetMapper;
+    KeyspacesConfig keyspacesConfig;
 
-    public KeyspacesRecordProcessor(ITargetMapper targetMapper) {
+    public KeyspacesRecordProcessor(ITargetMapper targetMapper, KeyspacesConfig keyspacesConfig) {
+        this.keyspacesConfig = keyspacesConfig;
         this.targetMapper = targetMapper;
     }
 
     @Override
     public void initialize(InitializationInput initializationInput) {
         this.shardId = initializationInput.shardId();
+
+        targetMapper.initialize(keyspacesConfig);
         logger.info("Initializing record processor for shard: {}", shardId);
     }
 
@@ -33,7 +38,6 @@ public class KeyspacesRecordProcessor implements KeyspacesStreamsShardRecordProc
     public void processRecords(KeyspacesStreamsProcessRecordsInput processRecordsInput) {
         try {
             
-          
             targetMapper.handleRecords(processRecordsInput.records());
             
             if (!processRecordsInput.records().isEmpty()) {

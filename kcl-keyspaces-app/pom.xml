@@ -40,6 +40,11 @@
             <artifactId>keyspaces-materialized-view-connector</artifactId>
             <version>${project.version}</version>
         </dependency>
+          <dependency>
+            <groupId>software.amazon.ssa</groupId>
+            <artifactId>sqs-connector</artifactId>
+            <version>${project.version}</version>
+        </dependency>
       
 
         <!-- Logging -->

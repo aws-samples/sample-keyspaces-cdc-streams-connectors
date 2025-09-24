@@ -19,6 +19,7 @@
         <module>s3-bucket-connector</module>
         <module>s3-vector-connector</module>
         <module>keyspaces-materialized-view-connector</module>
+        <module>sqs-connector</module>
     </modules>
 
     <properties>
