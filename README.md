@@ -28,13 +28,10 @@ Move data from Amazon Keyspaces to different downstream targets using Keyspaces 
 
 ## Architecture
 
-This project implements a streaming architecture that processes Amazon Keyspaces CDC events and stores them in S3. 
 
-![Architecture Diagram](architecture/keyspaces-cdc-s3-architecture-numbered.png)
+![Architecture Diagram](architecture/streams-connector.drawio.png)
 
-For detailed flow of the architecture, refer to [Architecture Description](architecture/ARCHITECTURE.md)
 
-For step-by-step data flow visualization, see [Data Flow Diagram](architecture/DATA_FLOW.md)
 
 ## Depoyment
 Docker file and deployment information can be found in [infrastructure-deploy](infrastructure-deploy) directory
