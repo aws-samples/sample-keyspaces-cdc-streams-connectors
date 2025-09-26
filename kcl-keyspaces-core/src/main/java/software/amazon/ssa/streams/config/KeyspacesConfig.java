@@ -53,6 +53,7 @@ public class KeyspacesConfig {
     private  int leasesRecoveryAuditorExecutionFrequencyMillis;
     private  Long leaseAssignmentIntervalMillis;
     private  boolean callProcessRecordsEvenForEmptyRecordList;
+    private  Config config;
 
 
 
@@ -208,6 +209,41 @@ public class KeyspacesConfig {
         }
         return null;
     }
+     /**
+     * Helper method to get configuration value with environment variable override.
+     * Environment variables are named by replacing dots and hyphens with underscores,
+     * and removing the "keyspaces-cdc-streams" prefix.
+     * 
+     * @param conf The configuration object
+     * @param configPath The configuration path
+     * @param defaultValue The default value if not found
+     * @return The configuration value (environment variable takes precedence)
+     */
+    public String getConfigValue(String configPath, String defaultValue, boolean isRequired) {
+        // Convert config path to environment variable name
+        return getConfigValue(config, configPath, defaultValue, isRequired);
+    }
+
+    public int getConfigValue(String configPath, int defaultValue, boolean isRequired) {
+        // Convert config path to environment variable name
+        return getConfigValue(config, configPath, defaultValue, isRequired);
+    }
+
+    public long getConfigValue(String configPath, long defaultValue, boolean isRequired) {
+        // Convert config path to environment variable name
+        return getConfigValue(config, configPath, defaultValue, isRequired);
+    }
+
+    public List<String> getConfigValue(String configPath, List<String> defaultValue, boolean isRequired) {
+        // Convert config path to environment variable name
+        return getConfigValue(config, configPath, defaultValue, isRequired);
+    }
+    
+    public boolean getConfigValue(String configPath, boolean defaultValue, boolean isRequired) {
+        // Convert config path to environment variable name
+        return getConfigValue(config, configPath, defaultValue, isRequired);
+    }
+
     /**
      * Helper method to get configuration value with environment variable override.
      * Environment variables are named by replacing dots and hyphens with underscores,
@@ -341,26 +377,26 @@ public class KeyspacesConfig {
      */
     private void initializeConfig() {
        
-        Config conf = ConfigFactory.parseFile(new File(configPath));
+        config = ConfigFactory.parseFile(new File(configPath));
 
-        keyspaceName = getConfigValue(conf, "keyspaces-cdc-streams.stream.keyspace-name", "", false);
-        tableName = getConfigValue(conf, "keyspaces-cdc-streams.stream.table-name", "", false);
-        streamName = getConfigValue(conf, "keyspaces-cdc-streams.stream.stream-name", "", false);
-        region = getConfigValue(conf, "keyspaces-cdc-streams.stream.region", "", true);
-        streamArn = getConfigValue(conf, "keyspaces-cdc-streams.stream.stream-arn", "", false);
-        applicationName = getConfigValue(conf, "keyspaces-cdc-streams.stream.application-name", "my-stream-app", true);
+        keyspaceName = getConfigValue(config, "keyspaces-cdc-streams.stream.keyspace-name", "", false);
+        tableName = getConfigValue(config, "keyspaces-cdc-streams.stream.table-name", "", false);
+        streamName = getConfigValue(config, "keyspaces-cdc-streams.stream.stream-name", "", false);
+        region = getConfigValue(config, "keyspaces-cdc-streams.stream.region", "", true);
+        streamArn = getConfigValue(config, "keyspaces-cdc-streams.stream.stream-arn", "", false);
+        applicationName = getConfigValue(config, "keyspaces-cdc-streams.stream.application-name", "my-stream-app", true);
         
-        skipShardSyncAtWorkerInitializationIfLeasesExist = getConfigValue(conf, "keyspaces-cdc-streams.coordinator.skip-shard-sync-at-worker-initialization-if-leases-exist", true, false);
-        parentShardPollIntervalMillis = getConfigValue(conf, "keyspaces-cdc-streams.coordinator.parent-shard-poll-interval-millis", 1000, false);
-        shardConsumerDispatchPollIntervalMillis = getConfigValue(conf, "keyspaces-cdc-streams.coordinator.shard-consumer-dispatch-poll-interval-millis", 500, false);
+        skipShardSyncAtWorkerInitializationIfLeasesExist = getConfigValue(config, "keyspaces-cdc-streams.coordinator.skip-shard-sync-at-worker-initialization-if-leases-exist", true, false);
+        parentShardPollIntervalMillis = getConfigValue(config, "keyspaces-cdc-streams.coordinator.parent-shard-poll-interval-millis", 1000, false);
+        shardConsumerDispatchPollIntervalMillis = getConfigValue(config, "keyspaces-cdc-streams.coordinator.shard-consumer-dispatch-poll-interval-millis", 500, false);
 
        
-        shardSyncIntervalMillis = getConfigValue(conf, "keyspaces-cdc-streams.lease-management.shard-sync-interval-millis", 60000, false);
-        leasesRecoveryAuditorInconsistencyConfidenceThreshold = getConfigValue(conf, "keyspaces-cdc-streams.lease-management.leases-recovery-auditor-inconsistency-confidence-threshold", 3, false);
-        leasesRecoveryAuditorExecutionFrequencyMillis = getConfigValue(conf, "keyspaces-cdc-streams.lease-management.leases-recovery-auditor-execution-frequency-millis", 5000, false);
-        leaseAssignmentIntervalMillis = getConfigValue(conf, "keyspaces-cdc-streams.lease-management.lease-assignment-interval-millis", 1000L, false);
+        shardSyncIntervalMillis = getConfigValue(config, "keyspaces-cdc-streams.lease-management.shard-sync-interval-millis", 60000, false);
+        leasesRecoveryAuditorInconsistencyConfidenceThreshold = getConfigValue(config, "keyspaces-cdc-streams.lease-management.leases-recovery-auditor-inconsistency-confidence-threshold", 3, false);
+        leasesRecoveryAuditorExecutionFrequencyMillis = getConfigValue(config, "keyspaces-cdc-streams.lease-management.leases-recovery-auditor-execution-frequency-millis", 5000, false);
+        leaseAssignmentIntervalMillis = getConfigValue(config, "keyspaces-cdc-streams.lease-management.lease-assignment-interval-millis", 1000L, false);
 
-        callProcessRecordsEvenForEmptyRecordList = getConfigValue(conf, "keyspaces-cdc-streams.processor.call-process-records-even-for-empty-record-list", true, false);
+        callProcessRecordsEvenForEmptyRecordList = getConfigValue(config, "keyspaces-cdc-streams.processor.call-process-records-even-for-empty-record-list", true, false);
 
     }
 

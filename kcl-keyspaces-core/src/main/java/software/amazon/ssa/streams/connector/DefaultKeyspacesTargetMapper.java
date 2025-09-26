@@ -10,9 +10,8 @@ import com.typesafe.config.Config;
 
 import software.amazon.keyspaces.streamsadapter.adapter.KeyspacesStreamsClientRecord;
 import software.amazon.keyspaces.streamsadapter.serialization.RecordObjectMapper;
-import software.amazon.ssa.streams.config.KeyspacesConfig;
 
-public class DefaultKeyspacesTargetMapper implements ITargetMapper {
+public class DefaultKeyspacesTargetMapper extends AbstractTargetMapper {
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultKeyspacesTargetMapper.class);
     /***
@@ -24,15 +23,10 @@ public class DefaultKeyspacesTargetMapper implements ITargetMapper {
     private ObjectMapper mapper = new RecordObjectMapper();
 
     public DefaultKeyspacesTargetMapper(Config config) {
+       super(config);
     }
 
     
-    @Override
-    public void initialize(KeyspacesConfig keyspacesConfig) {
-        // TODO Auto-generated method stub
-       // throw new UnsupportedOperationException("Unimplemented method 'initialize'");
-    }
-
     @Override
     public void handleRecords(List<KeyspacesStreamsClientRecord> records) throws Exception {
         

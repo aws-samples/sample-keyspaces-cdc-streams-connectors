@@ -18,19 +18,17 @@ public class KeyspacesRecordProcessorFactory implements ShardRecordProcessorFact
     private static final Logger logger = LoggerFactory.getLogger(KeyspacesRecordProcessorFactory.class);
     
     private final Queue<KeyspacesRecordProcessor> processors = new ConcurrentLinkedQueue<>();
-    private final KeyspacesConfig keyspacesConfig;
     
     private final ITargetMapper targetMapper;
 
-    public KeyspacesRecordProcessorFactory(ITargetMapper targetMapper, KeyspacesConfig keyspacesConfig) {
+    public KeyspacesRecordProcessorFactory(ITargetMapper targetMapper) {
         this.targetMapper = targetMapper;
-        this.keyspacesConfig = keyspacesConfig;
     }
 
     @Override
     public ShardRecordProcessor shardRecordProcessor() {
         logger.debug("Creating new RecordProcessor");
-        KeyspacesRecordProcessor processor = new KeyspacesRecordProcessor(targetMapper, keyspacesConfig);
+        KeyspacesRecordProcessor processor = new KeyspacesRecordProcessor(targetMapper);
         processors.add(processor);
         return processor;
     }

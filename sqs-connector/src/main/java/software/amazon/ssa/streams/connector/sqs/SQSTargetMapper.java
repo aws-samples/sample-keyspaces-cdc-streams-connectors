@@ -1,10 +1,14 @@
 package software.amazon.ssa.streams.connector.sqs;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +28,7 @@ import software.amazon.awssdk.services.sqs.model.SendMessageBatchResponse;
 
 import software.amazon.keyspaces.streamsadapter.adapter.KeyspacesStreamsClientRecord;
 import software.amazon.ssa.streams.config.KeyspacesConfig;
+import software.amazon.ssa.streams.connector.AbstractTargetMapper;
 import software.amazon.ssa.streams.helpers.StreamHelpers;
 import software.amazon.ssa.streams.helpers.StreamHelpers.StreamProcessorOperationType;
 import software.amazon.ssa.streams.exception.PartialFailureException;
@@ -44,45 +49,45 @@ import software.amazon.ssa.streams.exception.AllItemsFailureException;
  * - max-retries: Maximum retry attempts for SQS operations (default: 3)
  * - delay-seconds: Message delay in seconds (default: 0)
  */
-public class SQSTargetMapper implements software.amazon.ssa.streams.connector.ITargetMapper {
+public class SQSTargetMapper extends  AbstractTargetMapper {
 
     private static final Logger logger = LoggerFactory.getLogger(SQSTargetMapper.class);
-    private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
     
-    private SqsClient sqsClient;
+    private ObjectMapper JSON_MAPPER = new ObjectMapper();
+    
     private String queueUrl;
     private String region;
     private String messageFormat;
     private List<String> fieldsToInclude;
     private boolean includeMetadata;
     private int delaySeconds;
-    private KeyspacesConfig keyspacesConfig;
+    private String keyspaceName;
+    private String tableName;
     
     public SQSTargetMapper(Config config) {
-        this.queueUrl = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.queue-url", "", true);
-        this.region = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.region", "us-east-1", false);
-        this.messageFormat = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.message-format", "full", false);
-        this.fieldsToInclude = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.fields-to-include", new ArrayList<String>(), false);
-        this.includeMetadata = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.include-metadata", true, false);
+        super(config);
+        this.keyspaceName = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.keyspace-name", "", true);
+        this.tableName = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.table-name", "", true);
+        this.queueUrl = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.queue-url", "", true);
+        this.region = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.region", "us-east-1", false);
+        this.messageFormat = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.message-format", "full", false);
+        this.fieldsToInclude = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.fields-to-include", new ArrayList<String>(), false);
+        this.includeMetadata = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.include-metadata", true, false);
         this.delaySeconds = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.delay-seconds", 0, false);
+       
+    }
+
+    
+    @Override
+    public void initialize() {
+        super.initialize();
+        //once per application/connector, more performant to share across application, 
+        //but may have different configuration per connector or connector instance.
+        JSON_MAPPER = new ObjectMapper();
         JSON_MAPPER.registerModule(new JavaTimeModule());
     }
 
-    public synchronized SqsClient getOrCreateSqsClient() {
-        if (sqsClient == null) {
-            this.sqsClient = SqsClient.builder()
-                .region(Region.of(region))
-                .build();
-        }
-        return sqsClient;
-    }
-
-    @Override
-    public void initialize(KeyspacesConfig keyspacesConfig) {
-        this.keyspacesConfig = keyspacesConfig;
-        logger.info("Initializing SQS connector with queue: {} and region: {}", queueUrl, region);
-    }
-
+    
     @Override
     public void handleRecords(List<KeyspacesStreamsClientRecord> records) throws Exception {
         if (records == null || records.isEmpty()) {
@@ -90,6 +95,17 @@ public class SQSTargetMapper implements software.amazon.ssa.streams.connector.IT
             return;
         }
         
+        List<SendMessageBatchRequestEntry> batchRequestEntries = convertRecordsToBatchRequestEntries(records);
+
+        List<SendMessageBatchRequest> batchRequests = convertBatchEntriesToBatchRequest(batchRequestEntries);
+
+        for(SendMessageBatchRequest batchRequest : batchRequests){
+            sendBatchMessage(batchRequest);
+        }
+
+        logger.info("Successfully processed {} records to SQS queue: {}", records.size(), queueUrl);
+    }
+    protected List<SendMessageBatchRequestEntry> convertRecordsToBatchRequestEntries(List<KeyspacesStreamsClientRecord> records) throws Exception {
         ObjectNode oneMessageNode = JSON_MAPPER.createObjectNode();
 
         ArrayNode oneRecordsNode = JSON_MAPPER.createArrayNode();
@@ -100,98 +116,62 @@ public class SQSTargetMapper implements software.amazon.ssa.streams.connector.IT
         
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-        Collection<SendMessageBatchRequestEntry> batchRequestEntries = new ArrayList<>();
+        List<SendMessageBatchRequestEntry> batchRequestEntries = new ArrayList<>();
 
         int currentMessageSize = 0; //max size 1MB
-        int totalMessagesPerBatch = 0; //10 messages per batch
-
+        
         String lastSequenceNumber = "";
+
         for (KeyspacesStreamsClientRecord record : records) {
             
             lastSequenceNumber = record.sequenceNumber();
-            try {
+
+            ObjectNode oneJSONRecord = createMessageBody(record);
+
+            JSON_MAPPER.writeValue(baos, oneJSONRecord);
+
+            final int recordSize = baos.size();
                 
-                ObjectNode oneJSONRecord = createMessageBody(record);
+            baos.reset();
 
-                JSON_MAPPER.writeValue(baos, oneJSONRecord);
+            if((recordSize + currentMessageSize) < 1000 * 1024) {//1MB
 
-                final int recordSize = baos.size();
+                oneRecordsNode.add(oneJSONRecord);
+                
+                currentMessageSize += recordSize;
+            }else{
+                batchRequestEntries.add(
+                    SendMessageBatchRequestEntry.builder()
+                    .id(lastSequenceNumber + "-" + oneRecordsNode.size())
+                    .messageBody(JSON_MAPPER.writeValueAsString(oneMessageNode))
+                    .delaySeconds(delaySeconds).build());
                     
-                baos.reset();
-
-                if((recordSize + currentMessageSize) < 1000 * 1024) {//1MB
-
-                    oneRecordsNode.add(oneJSONRecord);
-                    
-                    currentMessageSize += recordSize;
-
-                }else if(totalMessagesPerBatch < 9){
-
-                    batchRequestEntries.add(
-                        SendMessageBatchRequestEntry.builder()
-                        .id(lastSequenceNumber + "-" + oneRecordsNode.size())
-                        .messageBody(JSON_MAPPER.writeValueAsString(oneMessageNode))
-                        .delaySeconds(delaySeconds).build());
-
-                    oneMessageNode = JSON_MAPPER.createObjectNode();
-                    oneRecordsNode = JSON_MAPPER.createArrayNode();
-                    oneMessageNode.set("records", oneRecordsNode);
-                    oneRecordsNode.add(oneJSONRecord);
-
-                    currentMessageSize = recordSize;
-
-                    totalMessagesPerBatch++;
-
-                }else{
-                    
-                    SendMessageBatchRequest batchRequest = SendMessageBatchRequest.builder()
-                    .queueUrl(queueUrl)
-                    .entries(batchRequestEntries)
-                    .build();
-                    sendBatchMessage(batchRequest);
-                    
-                    batchRequestEntries.clear();
-
-                    oneMessageNode = JSON_MAPPER.createObjectNode();
-                    oneRecordsNode = JSON_MAPPER.createArrayNode();
-                    oneMessageNode.set("records", oneRecordsNode);
-                    oneRecordsNode.add(oneJSONRecord);
-                    
-                    currentMessageSize = recordSize;
-                    totalMessagesPerBatch = 0;
-
-                }
-
-            } catch (Exception e) {
-                logger.error("Failed to process record for SQS: {}", e.getMessage(), e);
-                throw e;
+                oneMessageNode = JSON_MAPPER.createObjectNode();
+                oneRecordsNode = JSON_MAPPER.createArrayNode();
+                oneMessageNode.set("records", oneRecordsNode);
+                oneRecordsNode.add(oneJSONRecord);
+                
+                currentMessageSize = recordSize;
             }
         }
         if(oneRecordsNode.size() > 0){
-            SendMessageBatchRequestEntry batchRequestEntry = SendMessageBatchRequestEntry.builder()
-            .id(lastSequenceNumber + "-" + oneRecordsNode.size())
-            .messageBody(JSON_MAPPER.writeValueAsString(oneMessageNode))
-            .delaySeconds(delaySeconds).build();
-            
-            batchRequestEntries.add(batchRequestEntry);
+            batchRequestEntries.add(
+                SendMessageBatchRequestEntry.builder()
+                .id(lastSequenceNumber + "-" + oneRecordsNode.size())
+                .messageBody(JSON_MAPPER.writeValueAsString(oneMessageNode))
+                .delaySeconds(delaySeconds).build());
         }
-        if(batchRequestEntries != null && batchRequestEntries.size() > 0){
-            SendMessageBatchRequest batchRequest = SendMessageBatchRequest.builder().queueUrl(queueUrl).entries(batchRequestEntries).build();
-            sendBatchMessage(batchRequest);
-            batchRequestEntries.clear();
-        }
-        
-        logger.info("Successfully processed {} records to SQS queue: {}", records.size(), queueUrl);
+        return batchRequestEntries;
     }
 
-    private ObjectNode createMessageBody(KeyspacesStreamsClientRecord record) throws Exception {
+    protected ObjectNode createMessageBody(KeyspacesStreamsClientRecord record) throws Exception {
         ObjectNode messageNode = JSON_MAPPER.createObjectNode();
         
         // Add metadata if requested
         if (includeMetadata) {
             ObjectNode metadataNode = JSON_MAPPER.createObjectNode();
-            metadataNode.put("keyspace", keyspacesConfig.getKeyspaceName());
-            metadataNode.put("table", keyspacesConfig.getTableName());
+            metadataNode.put("keyspace", keyspaceName);
+            metadataNode.put("table", tableName);
             metadataNode.put("operation", StreamHelpers.getOperationType(record.getRecord()).toString());
             metadataNode.put("timestamp", System.currentTimeMillis());
             metadataNode.put("sequenceNumber", record.sequenceNumber());
@@ -199,7 +179,7 @@ public class SQSTargetMapper implements software.amazon.ssa.streams.connector.IT
         }
         
         // Add data based on message format
-        switch (messageFormat.toLowerCase()) {
+        switch (messageFormat.toLowerCase(Locale.ROOT)) {
             case "full":
                 messageNode.set("newImage", extractFieldsAsJson(record.getRecord().newImage(), fieldsToInclude));
                 messageNode.set("oldImage", extractFieldsAsJson(record.getRecord().oldImage(), fieldsToInclude));
@@ -219,9 +199,22 @@ public class SQSTargetMapper implements software.amazon.ssa.streams.connector.IT
         
         return messageNode;
     }
+    protected List<SendMessageBatchRequest> convertBatchEntriesToBatchRequest(List<SendMessageBatchRequestEntry> entries) throws Exception {
+        
+        AtomicInteger counter = new AtomicInteger(0);
+        
+        return entries.stream()
+        .collect(Collectors.groupingBy(s -> counter.getAndIncrement() / 10))
+        .values().stream()
+        .map(entryList -> SendMessageBatchRequest.builder()
+                .queueUrl(queueUrl)
+                .entries(entryList)
+                .build())
+        .collect(Collectors.toList());
+    
+    }
 
-
-    private JsonNode extractFieldsAsJson(software.amazon.awssdk.services.keyspacesstreams.model.KeyspacesRow image, List<String> fields) {
+    protected JsonNode extractFieldsAsJson(software.amazon.awssdk.services.keyspacesstreams.model.KeyspacesRow image, List<String> fields) {
         ObjectNode fieldsNode = JSON_MAPPER.createObjectNode();
         
         if (image != null && image.valueCells() != null) {
@@ -236,9 +229,9 @@ public class SQSTargetMapper implements software.amazon.ssa.streams.connector.IT
         return fieldsNode;
     }
 
-    private void sendBatchMessage(SendMessageBatchRequest batchRequest) throws Exception {             
+    protected void sendBatchMessage(SendMessageBatchRequest batchRequest) throws Exception {             
                
-        SendMessageBatchResponse response = getOrCreateSqsClient().sendMessageBatch(batchRequest);
+        SendMessageBatchResponse response = SQSService.getInstance(region).sendBatchRequest(batchRequest);
         
         int totalItems = batchRequest.entries().size();
         int failedItems = response.failed().size();

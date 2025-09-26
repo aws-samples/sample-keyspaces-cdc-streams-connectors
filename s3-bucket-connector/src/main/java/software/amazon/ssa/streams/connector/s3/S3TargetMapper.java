@@ -18,7 +18,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.keyspaces.streamsadapter.adapter.KeyspacesStreamsClientRecord;
 import software.amazon.ssa.streams.config.KeyspacesConfig;
-import software.amazon.ssa.streams.connector.ITargetMapper;
+import software.amazon.ssa.streams.connector.AbstractTargetMapper;
 import software.amazon.ssa.streams.helpers.AvroHelper;
 import software.amazon.ssa.streams.helpers.JSONHelper;
 
@@ -36,7 +36,7 @@ import software.amazon.ssa.streams.helpers.JSONHelper;
  * - timestamp-partition: Time partitioning granularity (default: hours)
  * - max-retries: Maximum retry attempts for S3 operations (default: 3)
  */
-public class S3TargetMapper implements ITargetMapper {
+public class S3TargetMapper extends AbstractTargetMapper {
 
     private static final Logger logger = LoggerFactory.getLogger(S3TargetMapper.class);
     
@@ -47,22 +47,21 @@ public class S3TargetMapper implements ITargetMapper {
     private String format;
     private String timestampPartition;
     private int maxRetries;
-    private KeyspacesConfig keyspacesConfig;
    
     public S3TargetMapper(Config config) {
-        this.bucketName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.bucket-id", "", true);
+        super(config);
+        this.bucketName = KeyspacesConfig.getConfigValue(config    , "keyspaces-cdc-streams.connector.bucket-id", "", true);
         this.prefix = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.prefix", "", false);
-        this.regionName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.region", "us-east-1", true);
-        this.format = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.format", "avro", false);
-        this.timestampPartition = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.timestamp-partition", "hours", false);
-        this.maxRetries = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.max-retries", 3, false);
-        this.s3Client = S3Client.builder().region(Region.of(regionName)).build();
+        this.regionName = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.region", "us-east-1", true);
+        this.format = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.format", "avro", false);
+        this.timestampPartition = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.timestamp-partition", "hours", false);
+        this.maxRetries = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.max-retries", 3, false);
+       
     }
 
     @Override
-    public void initialize(KeyspacesConfig keyspacesConfig) {
-        this.keyspacesConfig = keyspacesConfig;
-        logger.info("Initializing S3TargetMapper with bucket: {} and prefix: {}", bucketName, prefix);
+    public void initialize() {
+        this.s3Client = S3Client.builder().region(Region.of(regionName)).build();
     }
 
     @Override
@@ -127,26 +126,15 @@ public class S3TargetMapper implements ITargetMapper {
             throw new IllegalArgumentException("Invalid format: " + format);
         }
 
-        boolean success = false;
-        for (int attempt = 0; attempt < maxRetries && !success; attempt++) {
-            try {
-                s3Client.putObject(
-                    PutObjectRequest.builder()
-                        .bucket(bucketName)
-                        .key(key)
-                        .build(),
-                    RequestBody.fromBytes(data)
-                );
-                success = true;
-                logger.info("Successfully wrote {} records to S3: {}", records.size(), key);
-            } catch (Exception s3Error) {
-                logger.warn("S3 write attempt {} failed: {}", attempt, s3Error.getMessage());
-                if (attempt < maxRetries-1) {
-                    Thread.sleep(10 * attempt); // Exponential backoff
-                } else {
-                    throw s3Error;
-                }
-            }
-        }
+        
+        s3Client.putObject(
+            PutObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .build(),
+            RequestBody.fromBytes(data)
+        );
+
+        logger.info("Successfully wrote {} records to S3: {}", records.size(), key);
     }
 }

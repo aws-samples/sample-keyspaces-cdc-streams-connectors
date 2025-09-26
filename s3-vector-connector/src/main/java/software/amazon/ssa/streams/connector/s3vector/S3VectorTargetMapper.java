@@ -1,4 +1,4 @@
-package software.amazon.ssa.streams.connector.s3;
+package software.amazon.ssa.streams.connector.s3vector;
 
 import java.util.List;
 import java.util.Map;
@@ -20,7 +20,7 @@ import software.amazon.awssdk.services.s3vectors.model.PutVectorsResponse;
 import software.amazon.awssdk.services.s3vectors.model.VectorData;
 import software.amazon.keyspaces.streamsadapter.adapter.KeyspacesStreamsClientRecord;
 import software.amazon.ssa.streams.config.KeyspacesConfig;
-import software.amazon.ssa.streams.connector.ITargetMapper;
+import software.amazon.ssa.streams.connector.AbstractTargetMapper;
 import software.amazon.ssa.streams.helpers.StreamHelpers;
 import software.amazon.ssa.streams.helpers.VectorHelper;
 import software.amazon.awssdk.services.keyspacesstreams.model.KeyspacesCell;
@@ -45,7 +45,7 @@ import software.amazon.awssdk.services.s3vectors.model.PutInputVector.Builder;
  * - metadata-fields: List of fields to include as metadata (optional)
  * - dimensions: Vector dimensions (default: 256)
  */
-public class S3VectorTargetMapper implements ITargetMapper {
+public class S3VectorTargetMapper extends AbstractTargetMapper {
 
     private static final Logger logger = LoggerFactory.getLogger(S3VectorTargetMapper.class);
     
@@ -60,9 +60,9 @@ public class S3VectorTargetMapper implements ITargetMapper {
     private VectorHelper vectorHelper;
     private int dimensions;
     private S3VectorsClient s3VectorsClient;
-    private KeyspacesConfig keyspacesConfig;
    
     public S3VectorTargetMapper(Config config) {
+        super(config);
         this.bucketName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.bucket-id", "", true);
         this.regionName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.region", "us-east-1", true);
         this.maxRetries = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.max-retries", 3, false);
@@ -76,11 +76,6 @@ public class S3VectorTargetMapper implements ITargetMapper {
         this.vectorHelper = new VectorHelper(embeddingModel, regionName);
     }
 
-    @Override
-    public void initialize(KeyspacesConfig keyspacesConfig) {
-        this.keyspacesConfig = keyspacesConfig;
-        logger.info("Initializing S3VectorTargetMapper with bucket: {} and index: {}", bucketName, indexName);
-    }
 
     @Override
     public void handleRecords(List<KeyspacesStreamsClientRecord> records) throws Exception {

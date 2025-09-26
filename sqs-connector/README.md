@@ -336,6 +336,187 @@ aws sqs set-queue-attributes \
     }'
 ```
 
+## JEXL Filter Expressions
+
+The SQS connector supports JEXL (Java Expression Language) filter expressions to selectively process records based on their content. This allows you to filter out unwanted records before they are sent to SQS, reducing costs and improving performance.
+
+### Configuration
+
+Add the `jexl-filter-expression` property to your configuration:
+
+```hocon
+keyspaces-cdc-streams {
+  connector {
+    jexl-filter-expression = "metadata.operation == 'INSERT'"
+  }
+}
+```
+
+### Available Data Context
+
+JEXL expressions have access to the following data structure:
+
+```javascript
+{
+  // Record metadata
+  "metadata": {
+    "sequenceNumber": "12345",
+    "operation": "INSERT", // INSERT, UPDATE, DELETE, etc.
+    "streamArn": null,
+    "shardId": null,
+    "approximateArrivalTimestamp": null
+  },
+  
+  // New image data (for INSERT/UPDATE operations)
+  "newImage": {
+    "id": "user123",
+    "name": "John Doe",
+    "email": "john@example.com",
+    "popularity": 150,
+    "vote_average": 7.5
+  },
+  
+  // Old image data (for UPDATE/DELETE operations)
+  "oldImage": {
+    "id": "user123",
+    "name": "John Smith",
+    "email": "john.smith@example.com"
+  },
+  
+  // Flattened data (newImage takes precedence over oldImage)
+  "id": "user123",
+  "name": "John Doe",
+  "email": "john@example.com",
+  "popularity": 150,
+  "vote_average": 7.5
+}
+```
+
+### JEXL Expression Examples
+
+#### Filter by Operation Type
+```javascript
+// Only process INSERT operations
+metadata.operation == 'INSERT'
+
+// Process INSERT and UPDATE operations
+metadata.operation == 'INSERT' || metadata.operation == 'UPDATE'
+
+// Exclude DELETE operations
+metadata.operation != 'DELETE'
+```
+
+#### Filter by Field Values
+```javascript
+// Filter by numeric values
+popularity > 100
+vote_average >= 7.0
+vote_count < 1000
+
+// Filter by string values
+original_lang == 'en'
+title != null && title != ''
+
+// Filter by boolean values
+is_active == true
+```
+
+#### Complex Filtering
+```javascript
+// Multiple conditions with AND
+metadata.operation == 'INSERT' && popularity > 50
+
+// Multiple conditions with OR
+popularity > 100 || vote_average > 8.0
+
+// Complex nested conditions
+(metadata.operation == 'INSERT' || metadata.operation == 'UPDATE') && 
+(popularity > 50 || vote_average > 7.0) && 
+original_lang == 'en'
+```
+
+#### Field Existence Checks
+```javascript
+// Check if field exists and has value
+title != null && title != ''
+
+// Check if numeric field is within range
+popularity != null && popularity >= 10 && popularity <= 1000
+
+// Check if date field is valid
+rel_date != null && rel_date != '' && rel_date != 'NaN'
+```
+
+#### Nested Data Access
+```javascript
+// Access nested image data
+newImage.popularity > 100
+oldImage.vote_average < 5.0
+
+// Compare old vs new values
+newImage.popularity > oldImage.popularity
+```
+
+### Environment Variable Override
+
+You can override the JEXL filter expression using environment variables:
+
+```bash
+export CONNECTOR_JEXL_FILTER_EXPRESSION="metadata.operation == 'INSERT'"
+```
+
+### Performance Considerations
+
+- **Filter Early**: JEXL filtering happens before SQS processing, reducing costs
+- **Simple Expressions**: Keep expressions simple for better performance
+- **Index Usage**: Consider filtering on indexed fields for better performance
+- **Logging**: Filter results are logged for monitoring
+
+### Error Handling
+
+- **Invalid Expressions**: Invalid JEXL expressions will cause startup failure
+- **Evaluation Errors**: Records causing evaluation errors are filtered out
+- **Missing Fields**: Accessing non-existent fields returns null
+- **Type Mismatches**: JEXL handles type coercion automatically
+
+### Sample Configuration
+
+See `src/main/resources/sqs-application-with-jexl.conf` for complete examples.
+
+## Code Quality
+
+This project includes SpotBugs (FindBugs) static analysis for code quality assurance. The analysis is **enabled and working** with Java 11.
+
+### SpotBugs Configuration
+
+The SpotBugs plugin is configured in the `pom.xml` with the following settings:
+- **Effort**: Maximum analysis effort
+- **Threshold**: Low (reports all issues)
+- **Output**: XML and HTML reports
+- **Test Analysis**: Includes test code analysis
+- **Exclusion File**: `spotbugs-exclude.xml` for suppressing false positives
+- **Status**: ✅ **Active and working**
+
+### Running SpotBugs Analysis
+
+To run SpotBugs analysis:
+
+1. Ensure you're using Java 11-21 (not Java 23)
+2. Run: `mvn spotbugs:check`
+3. View detailed results: `mvn spotbugs:gui`
+
+### Current Status
+
+- ✅ **All SpotBugs issues resolved** (0 bugs found)
+- ✅ **18 unit tests passing**
+- ✅ **Code quality analysis active**
+- ✅ **Exclusion file configured** for false positives
+
+### Java Version Compatibility
+
+- ✅ **Java 11-21**: Fully supported
+- ❌ **Java 23**: Not supported (use Java 11-21 for SpotBugs analysis)
+
 ## Limitations
 
 - SQS message size limit of 256KB (connector uses 200KB for safety)

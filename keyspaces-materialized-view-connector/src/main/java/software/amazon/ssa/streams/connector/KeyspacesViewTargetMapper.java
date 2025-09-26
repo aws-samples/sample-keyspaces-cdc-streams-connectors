@@ -33,7 +33,7 @@ import software.amazon.ssa.streams.helpers.StreamHelpers.StreamProcessorOperatio
  * - timestamp-partition: Time partitioning granularity (default: hours)
  * - max-retries: Maximum retry attempts for S3 operations (default: 3)
  */
-public class KeyspacesViewTargetMapper implements ITargetMapper {
+public class KeyspacesViewTargetMapper extends AbstractTargetMapper {
 
     private static final Logger logger = LoggerFactory.getLogger(KeyspacesViewTargetMapper.class);
     
@@ -45,9 +45,9 @@ public class KeyspacesViewTargetMapper implements ITargetMapper {
     private int maxRetries;
     private List<String> partitionKeys;
     private List<String> clusteringKeys;
-    private KeyspacesConfig keyspacesConfig;
    
     public KeyspacesViewTargetMapper(Config config) {
+        super(config);
         this.keyspaceName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.keyspace-name", "", true);
         this.tableName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.table-name", "", true);
         this.maxRetries = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.max-retries", 3, false);
@@ -67,9 +67,8 @@ public class KeyspacesViewTargetMapper implements ITargetMapper {
         return session;
     }
     @Override
-    public void initialize(KeyspacesConfig keyspacesConfig) {
-        this.keyspacesConfig = keyspacesConfig;
-        
+    public void initialize() {
+       
         DriverConfigLoader driverConfigLoader = DriverConfigLoader.fromClasspath(driverConfig);
         this.session = CqlSession.builder()
             .withConfigLoader(driverConfigLoader)

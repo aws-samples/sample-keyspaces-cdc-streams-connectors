@@ -1,5 +1,6 @@
 package software.amazon.ssa.streams.processor;
 
+import software.amazon.keyspaces.streamsadapter.adapter.KeyspacesStreamsClientRecord;
 import software.amazon.keyspaces.streamsadapter.model.KeyspacesStreamsProcessRecordsInput;
 import software.amazon.keyspaces.streamsadapter.processor.KeyspacesStreamsShardRecordProcessor;
 import software.amazon.kinesis.lifecycle.events.InitializationInput;
@@ -7,8 +8,9 @@ import software.amazon.kinesis.lifecycle.events.LeaseLostInput;
 import software.amazon.kinesis.lifecycle.events.ShardEndedInput;
 import software.amazon.kinesis.lifecycle.events.ShutdownRequestedInput;
 import software.amazon.kinesis.processor.RecordProcessorCheckpointer;
-import software.amazon.ssa.streams.config.KeyspacesConfig;
 import software.amazon.ssa.streams.connector.ITargetMapper;
+
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,10 +21,10 @@ public class KeyspacesRecordProcessor implements KeyspacesStreamsShardRecordProc
     private String shardId;
     
     ITargetMapper targetMapper;
-    KeyspacesConfig keyspacesConfig;
 
-    public KeyspacesRecordProcessor(ITargetMapper targetMapper, KeyspacesConfig keyspacesConfig) {
-        this.keyspacesConfig = keyspacesConfig;
+
+    public KeyspacesRecordProcessor(ITargetMapper targetMapper) {
+        
         this.targetMapper = targetMapper;
     }
 
@@ -30,15 +32,18 @@ public class KeyspacesRecordProcessor implements KeyspacesStreamsShardRecordProc
     public void initialize(InitializationInput initializationInput) {
         this.shardId = initializationInput.shardId();
 
-        targetMapper.initialize(keyspacesConfig);
-        logger.info("Initializing record processor for shard: {}", shardId);
+        targetMapper.initialize();
+
+        logger.info("Initialized record processor for shard: {} and target mapper: {}", shardId, targetMapper.getClass().getName());
     }
 
     @Override
     public void processRecords(KeyspacesStreamsProcessRecordsInput processRecordsInput) {
         try {
+
+            List<KeyspacesStreamsClientRecord> filteredRecords = targetMapper.filterRecords(processRecordsInput.records());
             
-            targetMapper.handleRecords(processRecordsInput.records());
+            targetMapper.handleRecords(filteredRecords);
             
             if (!processRecordsInput.records().isEmpty()) {
                 RecordProcessorCheckpointer checkpointer = processRecordsInput.checkpointer();

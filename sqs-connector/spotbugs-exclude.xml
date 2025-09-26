@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- Suppress EI_EXPOSE_REP for SqsClient - it's immutable and thread-safe -->
+    <Match>
+        <Class name="software.amazon.ssa.streams.connector.sqs.SQSService"/>
+        <Method name="getOrCreateSqsClient"/>
+        <Bug pattern="EI_EXPOSE_REP"/>
+    </Match>
+</FindBugsFilter>
