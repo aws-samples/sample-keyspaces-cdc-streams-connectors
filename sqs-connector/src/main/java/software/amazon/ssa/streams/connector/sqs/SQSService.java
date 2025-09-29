@@ -19,7 +19,9 @@ public class SQSService implements ISQSService {
     }
 
     public synchronized static SQSService getInstance(String region) {
-        
+        if(region == null){
+            throw new IllegalArgumentException("Region cannot be null when retrieving instance of SQSService");
+        }
         if (I == null) {
             I = new HashMap<>();
         }
