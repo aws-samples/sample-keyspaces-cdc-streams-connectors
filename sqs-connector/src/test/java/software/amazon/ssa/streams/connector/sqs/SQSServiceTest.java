@@ -10,15 +10,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.SendMessageBatchRequest;
-import software.amazon.awssdk.services.sqs.model.SendMessageBatchResponse;
-import software.amazon.awssdk.services.sqs.model.SendMessageBatchResultEntry;
-import software.amazon.awssdk.services.sqs.model.BatchResultErrorEntry;
 
 /**
  * Unit tests for SQSService
@@ -30,15 +25,10 @@ import software.amazon.awssdk.services.sqs.model.BatchResultErrorEntry;
 class SQSServiceTest {
 
     private SQSService sqsService;
-    private SqsClient mockSqsClient;
-
     @BeforeEach
     void setUp() throws Exception {
         // Reset the static instance map before each test
         resetStaticInstanceMap();
-        
-        // Create a mock SQS client
-        mockSqsClient = mock(SqsClient.class);
     }
 
     @AfterEach

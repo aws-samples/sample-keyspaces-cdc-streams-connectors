@@ -7,21 +7,10 @@ package software.amazon.ssa.streams.helpers;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.core.document.Document;
-import software.amazon.awssdk.core.document.Document.MapBuilder;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
-import software.amazon.awssdk.services.s3vectors.S3VectorsClient;
-import software.amazon.awssdk.services.s3vectors.model.PutInputVector;
-import software.amazon.awssdk.services.s3vectors.model.PutVectorsRequest;
-import software.amazon.awssdk.services.s3vectors.model.PutVectorsResponse;
-import software.amazon.awssdk.services.s3vectors.model.VectorData;
-import software.amazon.keyspaces.streamsadapter.adapter.KeyspacesStreamsClientRecord;
-import software.amazon.awssdk.services.keyspacesstreams.model.KeyspacesCell;
-import software.amazon.awssdk.services.keyspacesstreams.model.KeyspacesCellValue.Type;
-import software.amazon.awssdk.services.s3vectors.model.PutInputVector.Builder;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -45,6 +34,7 @@ public class VectorHelper {
     private String region;
     private BedrockRuntimeClient bedrockRuntimeClient;
 
+    @SuppressWarnings("CT_CONSTRUCTOR_THROW")
     public VectorHelper(String modelId, String region){
         this.modelId = modelId;
         this.region = region;

@@ -4,6 +4,9 @@ import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import software.amazon.awssdk.services.keyspacesstreams.model.KeyspacesCell;
 import software.amazon.awssdk.services.keyspacesstreams.model.KeyspacesCellValue;
 import software.amazon.awssdk.services.keyspacesstreams.model.KeyspacesRow;
@@ -18,7 +21,8 @@ import software.amazon.awssdk.services.keyspacesstreams.model.KeyspacesCellValue
 import software.amazon.awssdk.services.keyspacesstreams.model.Record;
 
 public class StreamHelpers {
-    
+    private static final Logger logger = LoggerFactory.getLogger(StreamHelpers.class);
+
     public static StreamProcessorOperationType getOperationType(Record record) {
  
         OriginType originType = record.origin();
@@ -29,31 +33,30 @@ public class StreamHelpers {
 
         StreamProcessorOperationType operation_type = StreamProcessorOperationType.UNKNOWN;
 
-        if(originType != null && originType==OriginType.TTL){
+        if(originType == null){
+            logger.error("Origin type is null");
+            return operation_type;
+        }
+
+        if (originType==OriginType.TTL){
             operation_type = StreamProcessorOperationType.TTL;
         }else if(oldImage != null && newImage == null){
-            if (originType != null && originType==OriginType.REPLICATION){
+            if (originType==OriginType.REPLICATION){
                 operation_type = StreamProcessorOperationType.REPLICATED_DELETE;
-            }else if (originType != null && originType==OriginType.USER) {
+            }else if ( originType==OriginType.USER) {
                 operation_type = StreamProcessorOperationType.DELETE;
-            }else {
-                operation_type = StreamProcessorOperationType.UNKNOWN;
             }
         }else if (oldImage == null && newImage != null){
-            if (originType != null && originType==OriginType.REPLICATION){
+            if ( originType==OriginType.REPLICATION){
                 operation_type = StreamProcessorOperationType.REPLICATED_INSERT;
-            }else if (originType != null && originType==OriginType.USER) {
+            }else if (originType==OriginType.USER) {
                 operation_type = StreamProcessorOperationType.INSERT;
-            } else {
-                operation_type = StreamProcessorOperationType.UNKNOWN;
-            }
+            } 
         }else {
-            if (originType != null && originType==OriginType.REPLICATION){
+            if (originType==OriginType.REPLICATION){
                 operation_type = StreamProcessorOperationType.REPLICATED_UPDATE;
-            }else if (originType != null && originType==OriginType.USER) {
+            }else if ( originType==OriginType.USER) {
                 operation_type = StreamProcessorOperationType.UPDATE;
-            }else {
-                operation_type = StreamProcessorOperationType.UNKNOWN;
             }
         }
         return operation_type;
@@ -107,8 +110,9 @@ public class StreamHelpers {
             case "blobt":
                 return value.blobT().asByteArray();
             default:
+                logger.error("Unsupported CQL type: " + cqlType);
+                return value.textT();
                 // Return as string for unknown types
-                throw new IllegalArgumentException("Unsupported CQL type: " + cqlType);
         }
     }
     /**

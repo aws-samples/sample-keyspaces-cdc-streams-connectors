@@ -12,7 +12,6 @@ import software.amazon.keyspaces.streamsadapter.adapter.KeyspacesStreamsClientRe
 import software.amazon.ssa.streams.config.KeyspacesConfig;
 import software.amazon.ssa.streams.filter.IFilterService;
 import software.amazon.ssa.streams.filter.JexlFilterService;
-import software.amazon.ssa.streams.helpers.StreamHelpers;
 
 public abstract class AbstractTargetMapper implements ITargetMapper {
 

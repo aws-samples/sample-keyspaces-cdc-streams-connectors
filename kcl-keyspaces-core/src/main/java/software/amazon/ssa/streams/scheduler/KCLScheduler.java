@@ -78,10 +78,11 @@ public class KCLScheduler {
     }
 
 
+    @SuppressWarnings("EI_EXPOSE_REP2")
     public void startScheduler(Scheduler scheduler) {
         this.scheduler = scheduler;
 
-        schedulerThread = new Thread(() -> scheduler.run());
+        schedulerThread = new Thread(() -> this.scheduler.run());
         
         schedulerThread.start();
     }

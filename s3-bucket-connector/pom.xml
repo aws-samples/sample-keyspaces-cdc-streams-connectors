@@ -32,12 +32,7 @@
             <version>${aws.sdk.version}</version>
         </dependency>
 
-        <!-- Apache Avro for data serialization -->
-        <dependency>
-            <groupId>org.apache.avro</groupId>
-            <artifactId>avro</artifactId>
-            <version>1.11.3</version>
-        </dependency>
+       
 
         <!-- Logging -->
         <dependency>

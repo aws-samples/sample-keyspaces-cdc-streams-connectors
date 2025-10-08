@@ -1,36 +1,22 @@
 package software.amazon.ssa.streams.connector.sqs;
 
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.typesafe.config.Config;
 
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.sqs.SqsClient;
+// removed unused imports
 import software.amazon.awssdk.services.sqs.model.SendMessageBatchRequest;
 import software.amazon.awssdk.services.sqs.model.SendMessageBatchRequestEntry;
 import software.amazon.awssdk.services.sqs.model.SendMessageBatchResponse;
 
 import software.amazon.keyspaces.streamsadapter.adapter.KeyspacesStreamsClientRecord;
+import software.amazon.ssa.streams.converters.IStreamRecordConverter;
 import software.amazon.ssa.streams.config.KeyspacesConfig;
 import software.amazon.ssa.streams.connector.AbstractTargetMapper;
-import software.amazon.ssa.streams.helpers.StreamHelpers;
-import software.amazon.ssa.streams.helpers.StreamHelpers.StreamProcessorOperationType;
 import software.amazon.ssa.streams.exception.PartialFailureException;
 import software.amazon.ssa.streams.exception.AllItemsFailureException;
 
@@ -49,42 +35,40 @@ import software.amazon.ssa.streams.exception.AllItemsFailureException;
  * - max-retries: Maximum retry attempts for SQS operations (default: 3)
  * - delay-seconds: Message delay in seconds (default: 0)
  */
+@SuppressWarnings("UUF_UNUSED_FIELD")
 public class SQSTargetMapper extends  AbstractTargetMapper {
 
     private static final Logger logger = LoggerFactory.getLogger(SQSTargetMapper.class);
     
-    private ObjectMapper JSON_MAPPER = new ObjectMapper();
-    
     private String queueUrl;
     private String region;
-    private String messageFormat;
-    private List<String> fieldsToInclude;
-    private boolean includeMetadata;
     private int delaySeconds;
     private String keyspaceName;
     private String tableName;
+
+    IStreamRecordConverter<SendMessageBatchRequestEntry> jsonConverter;
     
+    @SuppressWarnings("CT_CONSTRUCTOR_THROW")
     public SQSTargetMapper(Config config) {
         super(config);
-        this.keyspaceName = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.keyspace-name", "", true);
-        this.tableName = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.table-name", "", true);
-        this.queueUrl = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.queue-url", "", true);
-        this.region = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.region", "us-east-1", false);
-        this.messageFormat = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.message-format", "full", false);
-        this.fieldsToInclude = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.fields-to-include", new ArrayList<String>(), false);
-        this.includeMetadata = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.include-metadata", true, false);
-        this.delaySeconds = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.delay-seconds", 0, false);
-       
+        
+        try {
+            this.keyspaceName = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.keyspace-name", "", true);
+            this.tableName = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.table-name", "", true);
+            this.queueUrl = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.queue-url", "", true);
+            this.region = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.region", "us-east-1", false);
+            this.delaySeconds = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.delay-seconds", 0, false);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to initialize SQS Target Mapper", e);
+        }
     }
 
     
     @Override
     public void initialize() {
         super.initialize();
-        //once per application/connector, more performant to share across application, 
-        //but may have different configuration per connector or connector instance.
-        JSON_MAPPER = new ObjectMapper();
-        JSON_MAPPER.registerModule(new JavaTimeModule());
+        jsonConverter = new SQSJsonConverter(config, delaySeconds);
+        
     }
 
     
@@ -94,139 +78,34 @@ public class SQSTargetMapper extends  AbstractTargetMapper {
             logger.debug("No records to process");
             return;
         }
-        
-        List<SendMessageBatchRequestEntry> batchRequestEntries = convertRecordsToBatchRequestEntries(records);
 
-        List<SendMessageBatchRequest> batchRequests = convertBatchEntriesToBatchRequest(batchRequestEntries);
+        // Use JSONHelper to create messages (records per message) and batches (messages per batch)
+        // SQS limits: 256KB per message, 10 messages per batch. We'll leave batch size unlimited (-1).
+        List<SendMessageBatchRequestEntry> requestEntries = jsonConverter.convertRecordsToMessages(
+            records,
+            keyspaceName,
+            tableName         // maxRecordsPerMessage: unlimited      // maxMessagesPerBatch: 10
+        );
 
-        for(SendMessageBatchRequest batchRequest : batchRequests){
+        int batchSize = 10;
+
+        List<SendMessageBatchRequest> batches = IntStream.range(0, (requestEntries.size() + batchSize - 1) / batchSize)
+        .mapToObj(i -> requestEntries.subList(i * batchSize, Math.min(requestEntries.size(), (i + 1) * batchSize)))
+        .map(batch -> {
+            SendMessageBatchRequest batchRequest = SendMessageBatchRequest.builder()
+                .queueUrl(queueUrl)
+                .entries(batch)
+                .build();
+            return batchRequest;
+        })
+        .collect(Collectors.toList());
+
+        for(SendMessageBatchRequest batchRequest : batches){
             sendBatchMessage(batchRequest);
         }
 
-        logger.info("Successfully processed {} records to SQS queue: {}", records.size(), queueUrl);
-    }
-    protected List<SendMessageBatchRequestEntry> convertRecordsToBatchRequestEntries(List<KeyspacesStreamsClientRecord> records) throws Exception {
-        ObjectNode oneMessageNode = JSON_MAPPER.createObjectNode();
-
-        ArrayNode oneRecordsNode = JSON_MAPPER.createArrayNode();
-        
-        oneMessageNode.set("records", oneRecordsNode);
-
-        logger.debug("Processing {} records for SQS queue: {}", records.size(), queueUrl);
-        
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-
-        List<SendMessageBatchRequestEntry> batchRequestEntries = new ArrayList<>();
-
-        int currentMessageSize = 0; //max size 1MB
-        
-        String lastSequenceNumber = "";
-
-        for (KeyspacesStreamsClientRecord record : records) {
-            
-            lastSequenceNumber = record.sequenceNumber();
-
-            ObjectNode oneJSONRecord = createMessageBody(record);
-
-            JSON_MAPPER.writeValue(baos, oneJSONRecord);
-
-            final int recordSize = baos.size();
-                
-            baos.reset();
-
-            if((recordSize + currentMessageSize) < 1000 * 1024) {//1MB
-
-                oneRecordsNode.add(oneJSONRecord);
-                
-                currentMessageSize += recordSize;
-            }else{
-                batchRequestEntries.add(
-                    SendMessageBatchRequestEntry.builder()
-                    .id(lastSequenceNumber + "-" + oneRecordsNode.size())
-                    .messageBody(JSON_MAPPER.writeValueAsString(oneMessageNode))
-                    .delaySeconds(delaySeconds).build());
-                    
-                oneMessageNode = JSON_MAPPER.createObjectNode();
-                oneRecordsNode = JSON_MAPPER.createArrayNode();
-                oneMessageNode.set("records", oneRecordsNode);
-                oneRecordsNode.add(oneJSONRecord);
-                
-                currentMessageSize = recordSize;
-            }
-        }
-        if(oneRecordsNode.size() > 0){
-            batchRequestEntries.add(
-                SendMessageBatchRequestEntry.builder()
-                .id(lastSequenceNumber + "-" + oneRecordsNode.size())
-                .messageBody(JSON_MAPPER.writeValueAsString(oneMessageNode))
-                .delaySeconds(delaySeconds).build());
-        }
-        return batchRequestEntries;
-    }
-
-    protected ObjectNode createMessageBody(KeyspacesStreamsClientRecord record) throws Exception {
-        ObjectNode messageNode = JSON_MAPPER.createObjectNode();
-        
-        // Add metadata if requested
-        if (includeMetadata) {
-            ObjectNode metadataNode = JSON_MAPPER.createObjectNode();
-            metadataNode.put("keyspace", keyspaceName);
-            metadataNode.put("table", tableName);
-            metadataNode.put("operation", StreamHelpers.getOperationType(record.getRecord()).toString());
-            metadataNode.put("timestamp", System.currentTimeMillis());
-            metadataNode.put("sequenceNumber", record.sequenceNumber());
-            messageNode.set("metadata", metadataNode);
-        }
-        
-        // Add data based on message format
-        switch (messageFormat.toLowerCase(Locale.ROOT)) {
-            case "full":
-                messageNode.set("newImage", extractFieldsAsJson(record.getRecord().newImage(), fieldsToInclude));
-                messageNode.set("oldImage", extractFieldsAsJson(record.getRecord().oldImage(), fieldsToInclude));
-                break;
-                
-            case "new-image":
-                messageNode.set("newImage", extractFieldsAsJson(record.getRecord().newImage(), fieldsToInclude));
-                break;
-                
-            case "old-image":
-                messageNode.set("oldImage", extractFieldsAsJson(record.getRecord().oldImage(), fieldsToInclude));
-                break;
-                
-            default:
-                throw new IllegalArgumentException("Unsupported message format: " + messageFormat);
-        }
-        
-        return messageNode;
-    }
-    protected List<SendMessageBatchRequest> convertBatchEntriesToBatchRequest(List<SendMessageBatchRequestEntry> entries) throws Exception {
-        
-        AtomicInteger counter = new AtomicInteger(0);
-        
-        return entries.stream()
-        .collect(Collectors.groupingBy(s -> counter.getAndIncrement() / 10))
-        .values().stream()
-        .map(entryList -> SendMessageBatchRequest.builder()
-                .queueUrl(queueUrl)
-                .entries(entryList)
-                .build())
-        .collect(Collectors.toList());
-    
-    }
-
-    protected JsonNode extractFieldsAsJson(software.amazon.awssdk.services.keyspacesstreams.model.KeyspacesRow image, List<String> fields) {
-        ObjectNode fieldsNode = JSON_MAPPER.createObjectNode();
-        
-        if (image != null && image.valueCells() != null) {
-            for (String fieldName : fields) {
-                if (image.valueCells().containsKey(fieldName)) {
-                    Object fieldValue = StreamHelpers.getValueFromCell(image.valueCells().get(fieldName).value());
-                    fieldsNode.putPOJO(fieldName, fieldValue);
-                }
-            }
-        }
-        
-        return fieldsNode;
+        logger.info("Successfully processed {} records to SQS queue: {})",
+            records.size(), queueUrl);
     }
 
     protected void sendBatchMessage(SendMessageBatchRequest batchRequest) throws Exception {             
@@ -234,6 +113,7 @@ public class SQSTargetMapper extends  AbstractTargetMapper {
         SendMessageBatchResponse response = SQSService.getInstance(region).sendBatchRequest(batchRequest);
         
         int totalItems = batchRequest.entries().size();
+        
         int failedItems = response.failed().size();
         
         if(totalItems > 0 && totalItems == failedItems ){

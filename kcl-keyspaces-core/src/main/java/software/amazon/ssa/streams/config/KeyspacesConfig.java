@@ -93,10 +93,14 @@ public class KeyspacesConfig {
     }
     
     
+    @SuppressWarnings("CT_CONSTRUCTOR_THROW")
     public KeyspacesConfig(String configPath) {
-
         this.configPath = configPath;
-        initializeConfig();
+        try {
+            initializeConfig();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to initialize KeyspacesConfig with path: " + configPath, e);
+        }
     }
     
     /**

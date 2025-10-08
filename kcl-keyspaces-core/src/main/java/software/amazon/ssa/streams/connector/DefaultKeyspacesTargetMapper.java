@@ -11,6 +11,7 @@ import com.typesafe.config.Config;
 import software.amazon.keyspaces.streamsadapter.adapter.KeyspacesStreamsClientRecord;
 import software.amazon.keyspaces.streamsadapter.serialization.RecordObjectMapper;
 
+@SuppressWarnings({"CT_CONSTRUCTOR_THROW", "UUF_UNUSED_FIELD"})
 public class DefaultKeyspacesTargetMapper extends AbstractTargetMapper {
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultKeyspacesTargetMapper.class);
@@ -31,7 +32,6 @@ public class DefaultKeyspacesTargetMapper extends AbstractTargetMapper {
     public void handleRecords(List<KeyspacesStreamsClientRecord> records) throws Exception {
         
         for (KeyspacesStreamsClientRecord record : records) {
-          record.toString();
             String json = mapper.writeValueAsString(record);
             logger.info("Keyspaces CDC Record: {}", json);
        }

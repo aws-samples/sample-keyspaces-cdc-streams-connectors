@@ -2,6 +2,7 @@ package software.amazon.ssa.streams.connector.s3;
 
 import java.util.Deque;
 import java.util.List;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,10 +18,9 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.keyspaces.streamsadapter.adapter.KeyspacesStreamsClientRecord;
+import software.amazon.ssa.streams.converters.IStreamRecordConverter;
 import software.amazon.ssa.streams.config.KeyspacesConfig;
 import software.amazon.ssa.streams.connector.AbstractTargetMapper;
-import software.amazon.ssa.streams.helpers.AvroHelper;
-import software.amazon.ssa.streams.helpers.JSONHelper;
 
 /**
  * S3 Target Mapper for Amazon Keyspaces CDC Streams
@@ -44,24 +44,34 @@ public class S3TargetMapper extends AbstractTargetMapper {
     private String bucketName;
     private String prefix;
     private String regionName;
-    private String format;
+    private String outputFormat;
     private String timestampPartition;
-    private int maxRetries;
+
+    private int maxMessageSize;
+    private int maxRecordsPerMessage;
+    private String keyspaceName;
+    private String tableName;
+
+    private IStreamRecordConverter<Map<String, RequestBody>> jsonConverter;
+    private IStreamRecordConverter<Map<String, RequestBody>> avroConverter;
    
     public S3TargetMapper(Config config) {
         super(config);
         this.bucketName = KeyspacesConfig.getConfigValue(config    , "keyspaces-cdc-streams.connector.bucket-id", "", true);
         this.prefix = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.prefix", "", false);
         this.regionName = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.region", "us-east-1", true);
-        this.format = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.format", "avro", false);
+        this.outputFormat = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.output-format", "avro", false);
         this.timestampPartition = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.timestamp-partition", "hours", false);
-        this.maxRetries = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.max-retries", 3, false);
        
-    }
+        this.keyspaceName = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.keyspace-name", "", false);
+        this.tableName = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.table-name", "", false);
+     }
 
     @Override
     public void initialize() {
         this.s3Client = S3Client.builder().region(Region.of(regionName)).build();
+        this.jsonConverter = new S3JsonConverter(config);
+        this.avroConverter = new S3AvroConverter(config);
     }
 
     @Override
@@ -97,44 +107,74 @@ public class S3TargetMapper extends AbstractTargetMapper {
         dq.forEach(partitionBuilder::append);
         String partition = partitionBuilder.toString();
 
-        String firstSequenceNumber = records.get(0).sequenceNumber();
-        String lastSequenceNumber = records.get(records.size() - 1).sequenceNumber();
         Instant timestamp = Instant.now();
 
         // Create filename with sequence range and timestamp
-        String filename = String.format("%s-%s-%d.%s", 
-            firstSequenceNumber,
-            lastSequenceNumber,
-            timestamp.toEpochMilli(),
-            format.equalsIgnoreCase("avro") ? "avro" : "json");
+       
         
-        String key = "";
-        if (partition.length() > 0) {
-            key = String.format("%s/%s/%s", prefix, partition, filename).replace("//", "/");
-        } else {
-            key = String.format("%s/%s", prefix, filename).replace("//", "/");
-        }
 
         logger.info("Processing {} records for S3 upload", records.size());
         
-        byte[] data;
-        if(format.equalsIgnoreCase("avro")) {
-            data = AvroHelper.writeRecordsToAvro(records);
-        } else if(format.equals("json")) {
-            data = JSONHelper.writeRecordsToJSON(records);
+       
+        if(outputFormat.equalsIgnoreCase("avro")) {
+            
+            List<Map<String, RequestBody>> data = avroConverter.convertRecordsToMessages(records, keyspaceName, tableName);
+
+            for(Map<String, RequestBody> oneBatch : data) {
+                for(Map.Entry<String, RequestBody> entry : oneBatch.entrySet()) {
+                    
+                    String filename = String.format("%s-%d.%s", 
+                    entry.getKey(),
+                    timestamp.toEpochMilli(),
+                    outputFormat.equalsIgnoreCase("avro") ? "avro" : "json");
+
+                    String key = "";
+                    if (partition.length() > 0) {
+                        key = String.format("%s/%s/%s", prefix, partition, filename).replace("//", "/");
+                    } else {
+                        key = String.format("%s/%s", prefix, filename).replace("//", "/");
+                    }
+
+                    s3Client.putObject(
+                        PutObjectRequest.builder()
+                            .bucket(bucketName)
+                            .key(key)
+                            .build(),
+                            entry.getValue()
+                        );
+                }
+            }
+        } else if(outputFormat.equals("json")) {
+            List<Map<String, RequestBody>> data = jsonConverter.convertRecordsToMessages(records, keyspaceName, tableName);
+        
+            for(Map<String, RequestBody> oneBatch : data) {
+                for(Map.Entry<String, RequestBody> entry : oneBatch.entrySet()) {
+
+                            String filename = String.format("%s-%d.%s", 
+                            entry.getKey(),
+                            timestamp.toEpochMilli(),
+                            outputFormat.equalsIgnoreCase("avro") ? "avro" : "json");
+
+                            String key = "";
+                            if (partition.length() > 0) {
+                                key = String.format("%s/%s/%s", prefix, partition, filename).replace("//", "/");
+                            } else {
+                                key = String.format("%s/%s", prefix, filename).replace("//", "/");
+                            }
+
+                            s3Client.putObject(
+                                PutObjectRequest.builder()
+                                    .bucket(bucketName)
+                                    .key(key)
+                                    .build(),
+                                    entry.getValue()
+                            );
+                }
+            }
         } else {
-            throw new IllegalArgumentException("Invalid format: " + format);
+            throw new IllegalArgumentException("Invalid format: " + outputFormat);
         }
 
-        
-        s3Client.putObject(
-            PutObjectRequest.builder()
-                .bucket(bucketName)
-                .key(key)
-                .build(),
-            RequestBody.fromBytes(data)
-        );
-
-        logger.info("Successfully wrote {} records to S3: {}", records.size(), key);
+        logger.info("Successfully wrote {} records to S3", records.size());
     }
 }
