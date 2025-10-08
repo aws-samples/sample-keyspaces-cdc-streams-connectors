@@ -155,31 +155,19 @@ public class S3VectorTargetMapper extends AbstractTargetMapper {
             toPut.add(putInputVectorBuilder.build());
         }
            
-        boolean success = false;
+           
+        PutVectorsRequest putReq = PutVectorsRequest.builder()
+            .vectorBucketName(bucketName)
+            .indexName(indexName)
+            .vectors(toPut)
+            .build();
         
-        for (int attempt = 0; attempt < maxRetries && !success; attempt++) {
-            try {
-                PutVectorsRequest putReq = PutVectorsRequest.builder()
-                    .vectorBucketName(bucketName)
-                    .indexName(indexName)
-                    .vectors(toPut)
-                    .build();
-                
-                S3VectorsClient s3VectorsClient = getOrCreateS3VectorsClient();
-                
-                PutVectorsResponse resp = s3VectorsClient.putVectors(putReq);
-                
-                success = true;
-                logger.debug("Successfully wrote {} records to S3Vector index: {} bucket: {}", records.size(), indexName, bucketName);
-            } catch (Exception s3Error) {
-                logger.warn("S3Vector write attempt {} failed: {}", attempt, s3Error.getMessage());
-                if (attempt < maxRetries-1) {
-                    Thread.sleep(100 * attempt); // Exponential backoff
-                } else {
-                    throw s3Error;
-                }
-            }
-        }
+        S3VectorsClient s3VectorsClient = getOrCreateS3VectorsClient();
+        
+        s3VectorsClient.putVectors(putReq);
+        
+        logger.debug("Successfully wrote {} records to S3Vector index: {} bucket: {}", records.size(), indexName, bucketName);
+        
     }
     
     private synchronized S3VectorsClient getOrCreateS3VectorsClient(){
