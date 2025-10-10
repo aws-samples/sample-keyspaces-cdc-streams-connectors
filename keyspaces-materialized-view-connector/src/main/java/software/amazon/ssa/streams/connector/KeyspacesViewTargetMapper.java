@@ -48,13 +48,13 @@ public class KeyspacesViewTargetMapper extends AbstractTargetMapper {
    
     public KeyspacesViewTargetMapper(Config config) {
         super(config);
-        this.keyspaceName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.keyspace-name", "", true);
-        this.tableName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.table-name", "", true);
-        this.maxRetries = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.max-retries", 3, false);
-        this.fieldsToInclude = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.fields-to-include", new ArrayList<String>(), true);
-        this.partitionKeys = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.partition-keys", new ArrayList<String>(), true);
-        this.clusteringKeys = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.clustering-keys", new ArrayList<String>(), true);
-        this.driverConfig = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.driver-config", "keyspaces-application.conf", true);
+        this.keyspaceName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.stream.connector.keyspace-name", "", true);
+        this.tableName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.stream.connector.table-name", "", true);
+        this.maxRetries = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.stream.connector.max-retries", 3, false);
+        this.fieldsToInclude = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.stream.connector.fields-to-include", new ArrayList<String>(), true);
+        this.partitionKeys = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.stream.connector.partition-keys", new ArrayList<String>(), true);
+        this.clusteringKeys = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.stream.connector.clustering-keys", new ArrayList<String>(), true);
+        this.driverConfig = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.stream.connector.driver-config", "keyspaces-application.conf", true);
     }
 
     public synchronized CqlSession getOrCreateSession() {

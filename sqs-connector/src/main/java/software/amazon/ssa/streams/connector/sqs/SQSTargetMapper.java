@@ -55,9 +55,9 @@ public class SQSTargetMapper extends  AbstractTargetMapper {
         try {
             this.keyspaceName = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.keyspace-name", "", true);
             this.tableName = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.table-name", "", true);
-            this.queueUrl = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.queue-url", "", true);
-            this.region = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.region", "us-east-1", false);
-            this.delaySeconds = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.delay-seconds", 0, false);
+            this.queueUrl = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.connector.queue-url", "", true);
+            this.region = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.connector.region", "us-east-1", false);
+            this.delaySeconds = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.stream.connector.delay-seconds", 0, false);
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize SQS Target Mapper", e);
         }

@@ -410,7 +410,7 @@ public class KeyspacesConfig {
 
         return buildFromConfig(conf,
             null,
-            "keyspaces-cdc-streams.connector.target-mapper",
+            "keyspaces-cdc-streams.stream.connector.target-mapper",
             ITargetMapper.class,
             "software.amazon.ssa.streams.connector")
         .orElseThrow(

@@ -57,11 +57,11 @@ public class S3TargetMapper extends AbstractTargetMapper {
    
     public S3TargetMapper(Config config) {
         super(config);
-        this.bucketName = KeyspacesConfig.getConfigValue(config    , "keyspaces-cdc-streams.connector.bucket-id", "", true);
-        this.prefix = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.prefix", "", false);
-        this.regionName = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.region", "us-east-1", true);
-        this.outputFormat = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.output-format", "avro", false);
-        this.timestampPartition = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.timestamp-partition", "hours", false);
+        this.bucketName = KeyspacesConfig.getConfigValue(config    , "keyspaces-cdc-streams.stream.connector.bucket-id", "", true);
+        this.prefix = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.stream.connector.prefix", "", false);
+        this.regionName = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.connector.region", "us-east-1", true);
+        this.outputFormat = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.connector.output-format", "avro", false);
+        this.timestampPartition = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.connector.timestamp-partition", "hours", false);
        
         this.keyspaceName = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.keyspace-name", "", false);
         this.tableName = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.table-name", "", false);

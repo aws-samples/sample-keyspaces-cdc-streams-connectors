@@ -42,11 +42,11 @@ public class AbstractJSONConverter<Message> implements IStreamRecordConverter<Me
     private int maxRecordsPerMessage;
 
     public AbstractJSONConverter(Config config){
-        this.fieldsToInclude = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.fields-to-include", new ArrayList<String>(), false);
-        this.includeMetadata = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.include-metadata", true, false);
-        this.recordFormat = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.record-format", "full", false);
-        this.maxMessageSize = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.max-message-size", 256 * 1024, false);
-        this.maxRecordsPerMessage = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.max-records-per-message", -1, false);
+        this.fieldsToInclude = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.connector.fields-to-include", new ArrayList<String>(), false);
+        this.includeMetadata = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.connector.include-metadata", true, false);
+        this.recordFormat = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.connector.record-format", "full", false);
+        this.maxMessageSize = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.connector.max-message-size", 256 * 1024, false);
+        this.maxRecordsPerMessage = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.connector.max-records-per-message", -1, false);
     }
     
     @SuppressWarnings("MS_EXPOSE_REP")

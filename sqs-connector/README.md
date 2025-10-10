@@ -44,16 +44,16 @@ keyspaces-cdc-streams {
         table-name = "source_table"
         region = "us-east-1"
         application-name = "sqs-stream-processor"
-    }
-    
-    connector {
-        target-mapper = "software.amazon.ssa.streams.connector.sqs.SQSTargetMapper"
-        queue-url = "https://sqs.us-east-1.amazonaws.com/123456789012/your-queue"
-        region = "us-east-1"
-        message-format = "full"
-        include-metadata = true
-        fields-to-include = ['key', 'value']
-        delay-seconds = 0
+        # SQS Connector Configuration - nested under stream to show relationship
+        connector {
+            target-mapper = "software.amazon.ssa.streams.connector.sqs.SQSTargetMapper"
+            queue-url = "https://sqs.us-east-1.amazonaws.com/123456789012/your-queue"
+            region = "us-east-1"
+            message-format = "full"
+            include-metadata = true
+            fields-to-include = ['key', 'value']
+            delay-seconds = 0
+        }
     }
     
     coordinator {

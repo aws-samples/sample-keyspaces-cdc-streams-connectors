@@ -34,11 +34,11 @@ class SQSTargetMapperTest {
         Map<String, Object> configMap = new HashMap<>();
         configMap.put("keyspaces-cdc-streams.stream.keyspace-name", "test_keyspace");
         configMap.put("keyspaces-cdc-streams.stream.table-name", "test_table");
-        configMap.put("keyspaces-cdc-streams.connector.queue-url", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
-        configMap.put("keyspaces-cdc-streams.connector.region", "us-east-1");
-        configMap.put("keyspaces-cdc-streams.connector.message-format", "full");
-        configMap.put("keyspaces-cdc-streams.connector.include-metadata", true);
-        configMap.put("keyspaces-cdc-streams.connector.delay-seconds", 0);
+        configMap.put("keyspaces-cdc-streams.stream.connector.queue-url", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
+        configMap.put("keyspaces-cdc-streams.stream.connector.region", "us-east-1");
+        configMap.put("keyspaces-cdc-streams.stream.connector.message-format", "full");
+        configMap.put("keyspaces-cdc-streams.stream.connector.include-metadata", true);
+        configMap.put("keyspaces-cdc-streams.stream.connector.delay-seconds", 0);
         
         config = com.typesafe.config.ConfigFactory.parseMap(configMap);
         sqsTargetMapper = new SQSTargetMapper(config);
@@ -101,11 +101,11 @@ class SQSTargetMapperTest {
         Map<String, Object> configMap = new HashMap<>();
         configMap.put("keyspaces-cdc-streams.stream.keyspace-name", "test_keyspace");
         configMap.put("keyspaces-cdc-streams.stream.table-name", "test_table");
-        configMap.put("keyspaces-cdc-streams.connector.queue-url", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
-        configMap.put("keyspaces-cdc-streams.connector.region", "us-east-1");
-        configMap.put("keyspaces-cdc-streams.connector.message-format", "new-image");
-        configMap.put("keyspaces-cdc-streams.connector.include-metadata", true);
-        configMap.put("keyspaces-cdc-streams.connector.delay-seconds", 0);
+        configMap.put("keyspaces-cdc-streams.stream.connector.queue-url", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
+        configMap.put("keyspaces-cdc-streams.stream.connector.region", "us-east-1");
+        configMap.put("keyspaces-cdc-streams.stream.connector.message-format", "new-image");
+        configMap.put("keyspaces-cdc-streams.stream.connector.include-metadata", true);
+        configMap.put("keyspaces-cdc-streams.stream.connector.delay-seconds", 0);
         
         Config newImageConfig = com.typesafe.config.ConfigFactory.parseMap(configMap);
         SQSTargetMapper newImageMapper = new SQSTargetMapper(newImageConfig);
@@ -120,11 +120,11 @@ class SQSTargetMapperTest {
         Map<String, Object> configMap = new HashMap<>();
         configMap.put("keyspaces-cdc-streams.stream.keyspace-name", "test_keyspace");
         configMap.put("keyspaces-cdc-streams.stream.table-name", "test_table");
-        configMap.put("keyspaces-cdc-streams.connector.queue-url", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
-        configMap.put("keyspaces-cdc-streams.connector.region", "us-east-1");
-        configMap.put("keyspaces-cdc-streams.connector.message-format", "old-image");
-        configMap.put("keyspaces-cdc-streams.connector.include-metadata", true);
-        configMap.put("keyspaces-cdc-streams.connector.delay-seconds", 0);
+        configMap.put("keyspaces-cdc-streams.stream.connector.queue-url", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
+        configMap.put("keyspaces-cdc-streams.stream.connector.region", "us-east-1");
+        configMap.put("keyspaces-cdc-streams.stream.connector.message-format", "old-image");
+        configMap.put("keyspaces-cdc-streams.stream.connector.include-metadata", true);
+        configMap.put("keyspaces-cdc-streams.stream.connector.delay-seconds", 0);
         
         Config oldImageConfig = com.typesafe.config.ConfigFactory.parseMap(configMap);
         SQSTargetMapper oldImageMapper = new SQSTargetMapper(oldImageConfig);
@@ -139,11 +139,11 @@ class SQSTargetMapperTest {
         Map<String, Object> configMap = new HashMap<>();
         configMap.put("keyspaces-cdc-streams.stream.keyspace-name", "test_keyspace");
         configMap.put("keyspaces-cdc-streams.stream.table-name", "test_table");
-        configMap.put("keyspaces-cdc-streams.connector.queue-url", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
-        configMap.put("keyspaces-cdc-streams.connector.region", "us-east-1");
-        configMap.put("keyspaces-cdc-streams.connector.message-format", "full");
-        configMap.put("keyspaces-cdc-streams.connector.include-metadata", false);
-        configMap.put("keyspaces-cdc-streams.connector.delay-seconds", 0);
+        configMap.put("keyspaces-cdc-streams.stream.connector.queue-url", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
+        configMap.put("keyspaces-cdc-streams.stream.connector.region", "us-east-1");
+        configMap.put("keyspaces-cdc-streams.stream.connector.message-format", "full");
+        configMap.put("keyspaces-cdc-streams.stream.connector.include-metadata", false);
+        configMap.put("keyspaces-cdc-streams.stream.connector.delay-seconds", 0);
         
         Config noMetadataConfig = com.typesafe.config.ConfigFactory.parseMap(configMap);
         SQSTargetMapper noMetadataMapper = new SQSTargetMapper(noMetadataConfig);
@@ -158,11 +158,11 @@ class SQSTargetMapperTest {
         Map<String, Object> configMap = new HashMap<>();
         configMap.put("keyspaces-cdc-streams.stream.keyspace-name", "test_keyspace");
         configMap.put("keyspaces-cdc-streams.stream.table-name", "test_table");
-        configMap.put("keyspaces-cdc-streams.connector.queue-url", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
-        configMap.put("keyspaces-cdc-streams.connector.region", "us-west-2");
-        configMap.put("keyspaces-cdc-streams.connector.message-format", "full");
-        configMap.put("keyspaces-cdc-streams.connector.include-metadata", true);
-        configMap.put("keyspaces-cdc-streams.connector.delay-seconds", 0);
+        configMap.put("keyspaces-cdc-streams.stream.connector.queue-url", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
+        configMap.put("keyspaces-cdc-streams.stream.connector.region", "us-west-2");
+        configMap.put("keyspaces-cdc-streams.stream.connector.message-format", "full");
+        configMap.put("keyspaces-cdc-streams.stream.connector.include-metadata", true);
+        configMap.put("keyspaces-cdc-streams.stream.connector.delay-seconds", 0);
         
         Config regionConfig = com.typesafe.config.ConfigFactory.parseMap(configMap);
         SQSTargetMapper regionMapper = new SQSTargetMapper(regionConfig);
@@ -177,11 +177,11 @@ class SQSTargetMapperTest {
         Map<String, Object> configMap = new HashMap<>();
         configMap.put("keyspaces-cdc-streams.stream.keyspace-name", "test_keyspace");
         configMap.put("keyspaces-cdc-streams.stream.table-name", "test_table");
-        configMap.put("keyspaces-cdc-streams.connector.queue-url", "https://sqs.us-west-2.amazonaws.com/987654321098/test-queue");
-        configMap.put("keyspaces-cdc-streams.connector.region", "us-east-1");
-        configMap.put("keyspaces-cdc-streams.connector.message-format", "full");
-        configMap.put("keyspaces-cdc-streams.connector.include-metadata", true);
-        configMap.put("keyspaces-cdc-streams.connector.delay-seconds", 0);
+        configMap.put("keyspaces-cdc-streams.stream.connector.queue-url", "https://sqs.us-west-2.amazonaws.com/987654321098/test-queue");
+        configMap.put("keyspaces-cdc-streams.stream.connector.region", "us-east-1");
+        configMap.put("keyspaces-cdc-streams.stream.connector.message-format", "full");
+        configMap.put("keyspaces-cdc-streams.stream.connector.include-metadata", true);
+        configMap.put("keyspaces-cdc-streams.stream.connector.delay-seconds", 0);
         
         Config queueConfig = com.typesafe.config.ConfigFactory.parseMap(configMap);
         SQSTargetMapper queueMapper = new SQSTargetMapper(queueConfig);
@@ -196,11 +196,11 @@ class SQSTargetMapperTest {
         Map<String, Object> configMap = new HashMap<>();
         configMap.put("keyspaces-cdc-streams.stream.keyspace-name", "production_keyspace");
         configMap.put("keyspaces-cdc-streams.stream.table-name", "production_table");
-        configMap.put("keyspaces-cdc-streams.connector.queue-url", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
-        configMap.put("keyspaces-cdc-streams.connector.region", "us-east-1");
-        configMap.put("keyspaces-cdc-streams.connector.message-format", "full");
-        configMap.put("keyspaces-cdc-streams.connector.include-metadata", true);
-        configMap.put("keyspaces-cdc-streams.connector.delay-seconds", 0);
+        configMap.put("keyspaces-cdc-streams.stream.connector.queue-url", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
+        configMap.put("keyspaces-cdc-streams.stream.connector.region", "us-east-1");
+        configMap.put("keyspaces-cdc-streams.stream.connector.message-format", "full");
+        configMap.put("keyspaces-cdc-streams.stream.connector.include-metadata", true);
+        configMap.put("keyspaces-cdc-streams.stream.connector.delay-seconds", 0);
         
         Config prodConfig = com.typesafe.config.ConfigFactory.parseMap(configMap);
         SQSTargetMapper prodMapper = new SQSTargetMapper(prodConfig);
@@ -215,7 +215,7 @@ class SQSTargetMapperTest {
         Map<String, Object> configMap = new HashMap<>();
         configMap.put("keyspaces-cdc-streams.stream.keyspace-name", "test_keyspace");
         configMap.put("keyspaces-cdc-streams.stream.table-name", "test_table");
-        configMap.put("keyspaces-cdc-streams.connector.queue-url", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
+        configMap.put("keyspaces-cdc-streams.stream.connector.queue-url", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
         // Omit optional fields to test defaults
         
         Config defaultConfig = com.typesafe.config.ConfigFactory.parseMap(configMap);
@@ -376,11 +376,11 @@ class SQSTargetMapperTest {
         Map<String, Object> configMap = new HashMap<>();
         configMap.put("keyspaces-cdc-streams.stream.keyspace-name", "test_keyspace");
         configMap.put("keyspaces-cdc-streams.stream.table-name", "test_table");
-        configMap.put("keyspaces-cdc-streams.connector.queue-url", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
-        configMap.put("keyspaces-cdc-streams.connector.region", "us-east-1");
-        configMap.put("keyspaces-cdc-streams.connector.message-format", "FULL"); // Uppercase
-        configMap.put("keyspaces-cdc-streams.connector.include-metadata", true);
-        configMap.put("keyspaces-cdc-streams.connector.delay-seconds", 0);
+        configMap.put("keyspaces-cdc-streams.stream.connector.queue-url", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
+        configMap.put("keyspaces-cdc-streams.stream.connector.region", "us-east-1");
+        configMap.put("keyspaces-cdc-streams.stream.connector.message-format", "FULL"); // Uppercase
+        configMap.put("keyspaces-cdc-streams.stream.connector.include-metadata", true);
+        configMap.put("keyspaces-cdc-streams.stream.connector.delay-seconds", 0);
         
         Config upperCaseConfig = com.typesafe.config.ConfigFactory.parseMap(configMap);
         SQSTargetMapper upperCaseMapper = new SQSTargetMapper(upperCaseConfig);
@@ -395,11 +395,11 @@ class SQSTargetMapperTest {
         Map<String, Object> configMap = new HashMap<>();
         configMap.put("keyspaces-cdc-streams.stream.keyspace-name", "test_keyspace");
         configMap.put("keyspaces-cdc-streams.stream.table-name", "test_table");
-        configMap.put("keyspaces-cdc-streams.connector.queue-url", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
-        configMap.put("keyspaces-cdc-streams.connector.region", "us-east-1");
-        configMap.put("keyspaces-cdc-streams.connector.message-format", "full");
-        configMap.put("keyspaces-cdc-streams.connector.include-metadata", true);
-        configMap.put("keyspaces-cdc-streams.connector.delay-seconds", 30);
+        configMap.put("keyspaces-cdc-streams.stream.connector.queue-url", "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
+        configMap.put("keyspaces-cdc-streams.stream.connector.region", "us-east-1");
+        configMap.put("keyspaces-cdc-streams.stream.connector.message-format", "full");
+        configMap.put("keyspaces-cdc-streams.stream.connector.include-metadata", true);
+        configMap.put("keyspaces-cdc-streams.stream.connector.delay-seconds", 30);
         
         Config delayConfig = com.typesafe.config.ConfigFactory.parseMap(configMap);
         SQSTargetMapper delayMapper = new SQSTargetMapper(delayConfig);

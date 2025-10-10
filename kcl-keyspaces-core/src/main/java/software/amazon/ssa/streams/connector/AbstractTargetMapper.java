@@ -28,7 +28,7 @@ public abstract class AbstractTargetMapper implements ITargetMapper {
         
         this.filterExpressionString = KeyspacesConfig.getConfigValue(
             config, 
-            "keyspaces-cdc-streams.connector.jexl-filter-expression", 
+            "keyspaces-cdc-streams.stream.connector.jexl-filter-expression", 
             (String) null, 
             false
         );

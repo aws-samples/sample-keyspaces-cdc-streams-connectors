@@ -56,31 +56,38 @@ keyspaces-cdc-streams {
         # stream-name = "your-stream-name"
         # Optional: specific stream ARN
         # stream-arn = "arn:aws:kinesis:us-east-1:123456789012:stream/your-stream"
+        # S3 Bucket Connector Configuration - nested under stream to show relationship
+        connector {
+            target-mapper = "software.amazon.ssa.streams.connector.s3.S3TargetMapper"
+            bucket-id = "your-s3-bucket-name"
+            prefix = "export/keyspace/table/incremental"
+            timestamp-partition = "hours"
+            region = "us-east-1"
+            output-format = "avro"  # or "json"
+            max-retries = 3
+        }
     }
     
-    # S3 Bucket Connector Configuration
-    connector {
-        target-mapper = "software.amazon.ssa.streams.connector.s3.S3TargetMapper"
-        bucket-id = "your-s3-bucket-name"
-        prefix = "export/keyspace/table/incremental"
-        timestamp-partition = "hours"
-        region = "us-east-1"
-        format = "avro"  # or "json"
-        max-retries = 3
-    }
-    
-    # S3 Vector Connector Configuration (alternative to S3 Bucket Connector)
-    # connector {
-    #     target-mapper = "software.amazon.ssa.streams.connector.s3.S3VectorTargetMapper"
-    #     bucket-id = "your-vector-bucket-name"
+    # Alternative stream configurations with different connectors
+    # stream {
+    #     keyspace-name = "your-keyspace-name"
+    #     table-name = "your-table-name"
     #     region = "us-east-1"
-    #     max-retries = 3
-    #     embedding-model = "amazon.titan-embed-text-v2:0"
-    #     index-name = "your-vector-index"
-    #     embedding-field = "description"
-    #     key-field = "id"
-    #     metadata-fields = ["title", "category"]
-    #     dimensions = 256
+    #     application-name = "your-application-name"
+    #     
+    #     # S3 Vector Connector Configuration
+    #     connector {
+    #         target-mapper = "software.amazon.ssa.streams.connector.s3.S3VectorTargetMapper"
+    #         bucket-id = "your-vector-bucket-name"
+    #         region = "us-east-1"
+    #         max-retries = 3
+    #         embedding-model = "amazon.titan-embed-text-v2:0"
+    #         index-name = "your-vector-index"
+    #         embedding-field = "description"
+    #         key-field = "id"
+    #         metadata-fields = ["title", "category"]
+    #         dimensions = 256
+    #     }
     # }
     
     coordinator {

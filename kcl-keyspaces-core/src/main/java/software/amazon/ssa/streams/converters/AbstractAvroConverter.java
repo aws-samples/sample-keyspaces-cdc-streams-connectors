@@ -61,11 +61,11 @@ public abstract class AbstractAvroConverter <Message> implements IStreamRecordCo
      */
     public AbstractAvroConverter(Config config){
         // Load configuration parameters with defaults
-        this.recordFormat = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.record-format", "full", false);
-        this.includeMetadata = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.include-metadata", true, false);
-        this.fieldsToInclude = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.fields-to-include", new ArrayList<String>(), false);
-        this.maxMessageSize = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.max-message-size", 256 * 1024, false);
-        this.maxRecordsPerMessage = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.connector.max-records-per-message", -1, false);
+        this.recordFormat = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.connector.record-format", "full", false);
+        this.includeMetadata = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.connector.include-metadata", true, false);
+        this.fieldsToInclude = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.connector.fields-to-include", new ArrayList<String>(), false);
+        this.maxMessageSize = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.connector.max-message-size", 256 * 1024, false);
+        this.maxRecordsPerMessage = KeyspacesConfig.getConfigValue( config, "keyspaces-cdc-streams.stream.connector.max-records-per-message", -1, false);
         
         // Register Avro logical type conversions for proper handling of complex data types
         GenericData.get().addLogicalTypeConversion(new org.apache.avro.Conversions.BigDecimalConversion());

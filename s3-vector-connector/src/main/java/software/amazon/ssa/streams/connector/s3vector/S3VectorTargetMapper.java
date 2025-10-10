@@ -63,15 +63,15 @@ public class S3VectorTargetMapper extends AbstractTargetMapper {
    
     public S3VectorTargetMapper(Config config) {
         super(config);
-        this.bucketName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.bucket-id", "", true);
-        this.regionName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.region", "us-east-1", true);
-        this.maxRetries = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.max-retries", 3, false);
-        this.embeddingModel = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.embedding-model", "amazon.titan-embed-text-v2:0", false);
-        this.indexName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.index-name", "", false);
-        this.embeddingField = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.embedding-field", "", false);
-        this.keyField = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.key-field", "", false);
-        this.metadataFields = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.metadata-fields", new ArrayList<String>(), false);
-        this.dimensions = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.connector.dimensions", 256, false);
+        this.bucketName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.stream.connector.bucket-id", "", true);
+        this.regionName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.stream.connector.region", "us-east-1", true);
+        this.maxRetries = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.stream.connector.max-retries", 3, false);
+        this.embeddingModel = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.stream.connector.embedding-model", "amazon.titan-embed-text-v2:0", false);
+        this.indexName = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.stream.connector.index-name", "", false);
+        this.embeddingField = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.stream.connector.embedding-field", "", false);
+        this.keyField = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.stream.connector.key-field", "", false);
+        this.metadataFields = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.stream.connector.metadata-fields", new ArrayList<String>(), false);
+        this.dimensions = KeyspacesConfig.getConfigValue(config, "keyspaces-cdc-streams.stream.connector.dimensions", 256, false);
        
         this.vectorHelper = new VectorHelper(embeddingModel, regionName);
     }
