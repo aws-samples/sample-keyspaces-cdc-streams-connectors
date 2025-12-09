@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import com.typesafe.config.Config;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 
 import software.amazon.awssdk.core.document.Document;
@@ -16,7 +17,6 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3vectors.S3VectorsClient;
 import software.amazon.awssdk.services.s3vectors.model.PutInputVector;
 import software.amazon.awssdk.services.s3vectors.model.PutVectorsRequest;
-import software.amazon.awssdk.services.s3vectors.model.PutVectorsResponse;
 import software.amazon.awssdk.services.s3vectors.model.VectorData;
 import software.amazon.keyspaces.streamsadapter.adapter.KeyspacesStreamsClientRecord;
 import software.amazon.ssa.streams.config.KeyspacesConfig;
@@ -91,10 +91,13 @@ public class S3VectorTargetMapper extends AbstractTargetMapper {
             MapBuilder metaDataFieldsDocument = Document.mapBuilder();
 
             for (Map.Entry<String, KeyspacesCell> entry : record.getRecord().newImage().valueCells().entrySet()) {
+                
+                String fieldName = entry.getKey();
                 Type cellType = entry.getValue().value().type();
                 Class<?> javaType = StreamHelpers.mapCqlTypeToJavaType(cellType);
 
-                if(entry.getKey().equals(embeddingField)){
+                logger.info("fieldName: {}, cellType: {}, javaType: {}", fieldName, cellType, javaType);
+                if(fieldName.equals(embeddingField)){
                     if(javaType == String.class){
                         String text = entry.getValue().value().textT();
 
@@ -120,33 +123,40 @@ public class S3VectorTargetMapper extends AbstractTargetMapper {
                     } else {
                         throw new IllegalArgumentException("Unsupported CQL type for vector index embedding: " + cellType);
                     }
-                } else if(entry.getKey().equals(keyField)){
+                } else if(fieldName.equals(keyField)){
                     if(javaType == String.class){
                         String text = entry.getValue().value().textT();
                         putInputVectorBuilder.key(text);
                     } else {
                         throw new IllegalArgumentException("Unsupported CQL type for vector index key: " + cellType);
                     }
-                } else if (metadataFields.contains(entry.getKey())){
+                }
+                if (metadataFields.contains(fieldName)){
                     if(javaType == String.class){
                         String text = entry.getValue().value().textT();
-                        metaDataFieldsDocument.putString(entry.getKey(), text);
+                        if(text != null){
+                            metaDataFieldsDocument.putString(fieldName, text);
+                        }
                     } else if(javaType == Integer.class){
                         Integer number = (Integer)StreamHelpers.getValueFromCell(entry);
-                        metaDataFieldsDocument.putNumber(entry.getKey(), number);
+                        metaDataFieldsDocument.putNumber(fieldName, number);
                     } else if(javaType == Long.class){
                         Long number = (Long)StreamHelpers.getValueFromCell(entry);
-                        metaDataFieldsDocument.putNumber(entry.getKey(), number);
+                        metaDataFieldsDocument.putNumber(fieldName, number);
                     } else if(javaType == Float.class){
                         Float number = (Float)StreamHelpers.getValueFromCell(entry);
-                        metaDataFieldsDocument.putNumber(entry.getKey(), number);
+                        metaDataFieldsDocument.putNumber(fieldName, number);
                     } else if(javaType == Double.class){
                         Double number = (Double)StreamHelpers.getValueFromCell(entry);
-                        metaDataFieldsDocument.putNumber(entry.getKey(), number);
+                        metaDataFieldsDocument.putNumber(fieldName, number);
                     } else if(javaType == Boolean.class){
                         Boolean booleanValue = (Boolean)StreamHelpers.getValueFromCell(entry);
-                        metaDataFieldsDocument.putBoolean(entry.getKey(), booleanValue);
-                    } else {
+                        metaDataFieldsDocument.putBoolean(fieldName, booleanValue);
+                    } else if(javaType == BigDecimal.class){
+                        BigDecimal number = (BigDecimal)StreamHelpers.getValueFromCell(entry);
+                        metaDataFieldsDocument.putNumber(fieldName, number);
+                    }
+                    else {
                         throw new IllegalArgumentException("Unsupported CQL type for vector index metadata: " + cellType);
                     }
                 }

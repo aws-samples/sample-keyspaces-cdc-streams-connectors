@@ -1,6 +1,10 @@
+# Default config path. Can be overridden with different external config file. -e CONFIG_PATH=path/to/config.conf
+ARG CONFIG_PATH=kcl-keyspaces-app/src/main/resources/streams-application.conf
+
 # Multi-stage build for KCL Keyspaces application
 FROM amazoncorretto:11-alpine AS builder
 
+ARG CONFIG_PATH
 # Install Maven and build dependencies
 RUN apk add --no-cache \
     maven \
@@ -17,6 +21,7 @@ COPY  kcl-keyspaces-app/pom.xml ./kcl-keyspaces-app/
 COPY  s3-bucket-connector/pom.xml ./s3-bucket-connector/
 COPY  s3-vector-connector/pom.xml ./s3-vector-connector/
 COPY  keyspaces-materialized-view-connector/pom.xml ./keyspaces-materialized-view-connector/
+COPY  sqs-connector/pom.xml ./sqs-connector/pom.xml
 # Download dependencies (this layer will be cached if pom files don't change)
 RUN mvn dependency:go-offline -B
 
@@ -26,6 +31,10 @@ COPY kcl-keyspaces-app/src ./kcl-keyspaces-app/src
 COPY s3-bucket-connector/src ./s3-bucket-connector/src
 COPY s3-vector-connector/src ./s3-vector-connector/src
 COPY keyspaces-materialized-view-connector/src ./keyspaces-materialized-view-connector/src
+COPY sqs-connector/src ./sqs-connector/src
+
+# Use it in COPY (file must be in the build context)
+COPY ${CONFIG_PATH} ./kcl-keyspaces-app/src/main/resources/streams-application.conf
 
 # Build the application with shade plugin to create fat JAR
 RUN mvn clean package -DskipTests
@@ -55,7 +64,7 @@ COPY --from=builder /app/s3-bucket-connector/target/s3-bucket-connector-1.0.0.ja
 COPY --from=builder /app/s3-vector-connector/target/s3-vector-connector-1.0.0.jar ./lib/
 COPY --from=builder /app/kcl-keyspaces-core/target/kcl-keyspaces-core-1.0.0.jar ./lib/
 COPY --from=builder /app/keyspaces-materialized-view-connector/target/keyspaces-materialized-view-connector-1.0.0.jar ./lib/
-
+COPY --from=builder /app/sqs-connector/target/sqs-connector-1.0.0.jar ./lib/
 # Copy configuration files
 COPY --from=builder /app/kcl-keyspaces-app/src/main/resources/streams-application.conf ./streams-application.conf
 COPY --from=builder /app/keyspaces-materialized-view-connector/src/main/resources/keyspaces-application.conf ./keyspaces-application.conf
@@ -65,7 +74,6 @@ ADD https://certs.secureserver.net/repository/sf-class2-root.crt ./sf-class2-roo
 
 # Change ownership to app user
 RUN chown -R appuser:appuser /app
-
 
 # Switch to app user
 USER appuser

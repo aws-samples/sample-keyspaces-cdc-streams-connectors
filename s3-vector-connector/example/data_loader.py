@@ -232,6 +232,7 @@ rows = []
 
 # Read and process CSV file
 with open("movies_list.csv", newline="", encoding="utf-8") as csvfile:
+
     reader = csv.DictReader(csvfile)
     
     for r in reader:
