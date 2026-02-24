@@ -2,7 +2,6 @@ package software.amazon.ssa.streams.processor;
 
 import software.amazon.kinesis.processor.ShardRecordProcessor;
 import software.amazon.kinesis.processor.ShardRecordProcessorFactory;
-import software.amazon.ssa.streams.config.KeyspacesConfig;
 import software.amazon.ssa.streams.connector.ITargetMapper;
 
 import org.slf4j.Logger;

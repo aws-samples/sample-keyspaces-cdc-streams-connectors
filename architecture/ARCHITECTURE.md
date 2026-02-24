@@ -137,7 +137,6 @@
 ## Key Features
 
 ### Scalability
-- **Multi-stream Support**: Each Keyspaces stream ARN gets dedicated ECS task
 - **Auto-scaling**: ECS Fargate automatically handles resource scaling
 - **Parallel Processing**: Multiple streams processed simultaneously
 

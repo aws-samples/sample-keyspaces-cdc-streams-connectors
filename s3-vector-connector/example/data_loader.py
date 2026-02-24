@@ -227,11 +227,20 @@ else:
 # CSV DATA LOADING AND PROCESSING
 # =============================================================================
 
+# Resolve CSV path: check cwd first, then script directory
+_csv_name = "movies_list.csv"
+_csv_cwd = os.path.join(os.getcwd(), _csv_name)
+_csv_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), _csv_name)
+CSV_PATH = _csv_cwd if os.path.isfile(_csv_cwd) else _csv_script
+if not os.path.isfile(CSV_PATH):
+    print(f"Error: {_csv_name} not found in current directory or script directory")
+    sys.exit(1)
+
 print("Reading movie data from CSV file...")
 rows = []
 
 # Read and process CSV file
-with open("movies_list.csv", newline="", encoding="utf-8") as csvfile:
+with open(CSV_PATH, newline="", encoding="utf-8") as csvfile:
 
     reader = csv.DictReader(csvfile)
     

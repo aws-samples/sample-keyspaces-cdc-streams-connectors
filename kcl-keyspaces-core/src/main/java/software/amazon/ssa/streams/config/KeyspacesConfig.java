@@ -381,7 +381,7 @@ public class KeyspacesConfig {
      */
     private void initializeConfig() {
        
-        config = ConfigFactory.parseFile(new File(configPath));
+        config = ConfigFactory.parseFile(new File(configPath)).resolve();
 
         keyspaceName = getConfigValue(config, "keyspaces-cdc-streams.stream.keyspace-name", "", false);
         tableName = getConfigValue(config, "keyspaces-cdc-streams.stream.table-name", "", false);
@@ -406,9 +406,7 @@ public class KeyspacesConfig {
 
     public ITargetMapper getTargetMapper() {
 
-        Config conf = ConfigFactory.parseFile(new File(configPath));
-
-        return buildFromConfig(conf,
+        return buildFromConfig(config,
             null,
             "keyspaces-cdc-streams.stream.connector.target-mapper",
             ITargetMapper.class,
